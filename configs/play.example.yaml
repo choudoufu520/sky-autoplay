@@ -1,0 +1,5 @@
+latency_offset_ms: 0
+countdown_sec: 3
+chord_stagger_ms: 2
+dry_run: false
+debug: false

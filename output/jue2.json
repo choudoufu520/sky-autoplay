@@ -1,0 +1,7472 @@
+{
+  "format_version": 1,
+  "events": [
+    {
+      "time_ms": 0,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 255,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 276,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 348,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 383,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 476,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 511,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 767,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 787,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1022,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1043,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1298,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1534,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1789,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 1810,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2045,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2065,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2108,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2173,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2236,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2301,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2364,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2428,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2491,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2556,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2812,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 2832,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 3068,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 3088,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 3131,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4090,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4346,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4366,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4439,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4474,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4567,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4602,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4857,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 4878,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5113,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5133,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5369,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5389,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5582,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5625,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5880,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 5901,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6093,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6136,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6199,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6264,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6327,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6392,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6455,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6519,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6582,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6647,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6903,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 6923,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7159,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7179,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7619,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7670,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7785,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 7926,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8041,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8181,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8437,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8457,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8530,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8565,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8658,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8693,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8948,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 8969,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9204,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9224,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9480,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9715,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9971,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 9991,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10227,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10247,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10290,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10355,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10418,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10482,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10545,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10610,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10673,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10738,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 10994,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 11014,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 11250,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 11270,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 11313,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12272,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12528,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12548,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12621,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12656,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12719,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12784,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 12911,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13039,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13166,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13295,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13422,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13551,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13678,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13806,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 13933,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 15085,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 15361,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16363,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16619,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16619,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16619,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16619,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16639,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16712,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16734,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16734,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16734,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16747,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16810,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16875,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 16938,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17130,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17130,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17130,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17245,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17245,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17245,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17642,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17642,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17642,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17757,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17757,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 17757,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18153,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18153,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18153,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18268,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18268,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18268,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18409,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18664,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18664,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18664,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18664,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18685,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18757,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18779,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18779,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18779,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18792,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18855,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18920,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 18983,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19176,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19176,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19176,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19291,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19291,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19291,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19687,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19687,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19687,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19802,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19802,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 19802,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20198,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20198,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20198,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20313,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20313,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20313,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20454,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20710,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20710,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20710,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20710,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20730,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20803,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20825,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20825,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20825,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20838,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20901,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 20965,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21028,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21221,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21221,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21221,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21336,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21336,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21336,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21732,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21732,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21732,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21847,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21847,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 21847,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22244,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22244,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22244,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22359,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22359,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22359,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22500,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22755,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22755,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22776,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22848,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22870,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22883,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 22946,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23011,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23074,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23267,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23382,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23778,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 23893,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24289,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24404,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24545,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24801,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24801,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24801,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24801,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24821,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24894,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24916,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24916,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24916,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24928,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 24991,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25056,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25119,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25312,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25312,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25312,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25427,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25427,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25427,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25823,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25823,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25823,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25938,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25938,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 25938,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26335,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26335,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26335,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26450,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26450,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26450,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26590,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26846,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26846,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26846,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26846,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26866,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26939,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26961,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26961,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26961,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 26974,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27037,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27102,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27165,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27357,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27357,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27357,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27472,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27472,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27472,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27869,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27869,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27869,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27984,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27984,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 27984,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28380,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28380,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28380,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28495,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28495,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28495,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28636,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28892,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28892,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28892,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28892,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28912,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 28985,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29007,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29007,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29007,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29019,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29082,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29147,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29210,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29403,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29403,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29403,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29518,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29518,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29518,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29914,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29914,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 29914,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30029,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30029,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30029,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30681,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30796,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 30937,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 31052,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 31193,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 31704,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 31857,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 32573,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 32727,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 32918,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 32982,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33075,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33110,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33203,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33238,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33429,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33494,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33685,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33750,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 33941,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34005,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34196,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34261,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34452,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34517,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34708,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34772,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34835,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34900,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 34963,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35028,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35091,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35156,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35219,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35284,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35539,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35560,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35795,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35815,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 35858,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 36818,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37009,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37073,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37166,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37201,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37294,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37329,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37520,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37585,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37776,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 37840,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38031,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38096,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38287,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38352,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38543,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38607,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38798,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38863,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38926,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 38991,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39054,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39119,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39182,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39247,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39310,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39375,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39630,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39651,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39886,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39886,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 39906,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40346,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40354,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40397,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40397,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40857,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40857,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 40909,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41100,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41164,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41257,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41292,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41385,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41420,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41611,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41676,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41867,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 41931,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42122,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42187,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42378,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42443,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42634,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42698,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42889,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 42954,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43017,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43082,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43145,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43210,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43273,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43338,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43401,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43465,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43721,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43741,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43977,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 43997,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 44040,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45000,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45191,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45255,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45348,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45383,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45476,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45511,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45702,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45767,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 45958,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46022,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46213,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46278,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46469,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46534,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46725,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46789,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 46980,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47045,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47108,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47173,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47236,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47301,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47364,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47429,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47492,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47556,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47556,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47671,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47812,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 47832,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48068,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48088,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48536,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48579,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48809,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 48835,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 49065,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 49090,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 49857,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50087,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50113,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50343,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50369,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50470,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50599,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 50625,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 51093,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 51136,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 51826,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 51903,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53053,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53096,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53139,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53863,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53867,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53948,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 53948,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 54178,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 54204,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 54434,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 54460,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 54690,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55098,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55142,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55184,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55227,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55909,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55912,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55994,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55994,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55994,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 55994,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56224,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56224,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56250,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56480,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56505,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56735,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56761,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 56991,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 57144,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 57272,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 57272,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58295,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58499,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58499,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58525,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58636,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58636,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58942,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 58942,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 59318,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 60008,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 60596,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 60596,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 61235,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 61277,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 61278,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 61321,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 61363,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62045,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62049,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62130,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62130,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62130,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62130,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62386,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62616,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62820,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62820,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62820,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62897,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62897,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 62897,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63357,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63357,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63365,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63409,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63409,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 63409,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64329,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64329,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64329,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64431,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64899,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 64943,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 65173,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 65198,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 65428,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 65454,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66221,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66451,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66477,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66604,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66707,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66733,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66733,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66963,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66963,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 66988,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 67218,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 67244,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 67474,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 67500,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 68190,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 68267,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 69417,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70312,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70312,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70542,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70568,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70798,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 70823,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 71002,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 71053,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 71079,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 71539,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 71590,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 72280,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 72358,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 73508,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 73551,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 73857,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 73892,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 74122,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 74403,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 74403,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 74403,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75093,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75093,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75170,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75170,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75553,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75596,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75630,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75630,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75902,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 75937,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 76167,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 76448,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 76448,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 76448,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77138,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77138,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77138,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77215,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77215,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77598,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77642,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77675,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 77684,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 78409,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 78412,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 78494,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 78494,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 79261,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 79644,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 79644,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 79721,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 81306,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 81340,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 81818,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82073,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82094,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82166,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82201,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82294,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82329,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82585,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82605,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82840,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 82861,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83031,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83352,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83543,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83608,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83799,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83863,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83926,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 83991,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84054,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84119,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84182,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84247,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84310,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84375,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84630,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84651,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84886,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84906,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 84949,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 85909,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86164,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86185,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86257,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86292,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86385,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86420,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86676,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86696,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86931,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 86952,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87122,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87187,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87378,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87443,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87634,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87698,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87889,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 87954,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88017,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88082,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88145,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88210,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88273,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88338,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88401,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88465,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88721,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88741,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88977,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88977,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 88997,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 89092,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 89437,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 89744,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 89859,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90000,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90255,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90255,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90255,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90255,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90276,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90348,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90383,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90408,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90408,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90408,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90476,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90511,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90767,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90767,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90767,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90767,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90787,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90882,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90882,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 90882,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91022,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91043,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91213,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91278,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91278,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91278,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91431,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91431,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91431,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91534,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91725,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91789,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91789,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91789,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91789,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91904,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91904,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91904,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 91980,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92045,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92108,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92173,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92236,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92301,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92301,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92301,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92301,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92364,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92416,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92416,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92416,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92429,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92492,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92556,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92812,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92812,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92812,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92812,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92832,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92927,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92927,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 92927,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93068,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93088,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93131,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93323,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93450,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93579,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93706,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93835,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 93962,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94090,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94346,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94346,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94346,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94346,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94366,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94439,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94474,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94499,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94499,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94499,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94537,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94602,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94832,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94858,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94858,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94858,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94858,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94973,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94973,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 94973,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95088,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95113,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95240,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95369,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95369,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95369,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95369,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95496,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95522,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95522,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95522,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95625,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 95752,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 96903,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97159,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97179,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97619,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97670,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97925,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 97926,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98139,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98181,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98411,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98437,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98692,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98693,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98948,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 98948,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99178,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99204,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99459,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99460,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99715,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99715,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99945,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 99971,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100226,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100227,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100227,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100227,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100457,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100457,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100457,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100483,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100738,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100738,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100993,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100994,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100994,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 100994,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101224,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101224,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101224,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101250,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101505,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101505,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101760,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101761,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101761,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 101974,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102016,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102017,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102017,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102017,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102247,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102247,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102247,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102272,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102272,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102272,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102502,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102502,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102502,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102528,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102783,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 102784,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103039,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103039,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103039,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103039,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103269,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103269,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103269,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103295,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103550,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103551,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103806,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103806,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103806,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 103806,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104019,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104036,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104036,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104062,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104062,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104292,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104292,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104318,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104318,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104318,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104318,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 104778,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 105340,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 105800,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106158,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106158,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106158,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106363,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106363,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106576,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106593,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106619,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106619,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106832,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106832,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106875,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106875,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 106875,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107105,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107105,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107105,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107130,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107360,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107386,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107386,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107599,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107616,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107642,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107642,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107855,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107872,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107897,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 107897,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108110,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108127,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108153,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108153,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108383,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108383,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108409,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108409,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108622,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108639,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108664,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108664,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108779,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108894,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108920,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108920,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 108920,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109035,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109150,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109150,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109176,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109176,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109389,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109406,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109431,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109431,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109546,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109661,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109687,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109687,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109802,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109900,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109943,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109943,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 109943,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110156,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110173,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110173,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110198,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110198,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110428,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110428,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110454,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110454,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110667,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110684,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110710,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110710,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110825,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110940,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110966,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110966,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110966,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 110966,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111081,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111196,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111196,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111196,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111221,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111221,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111451,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111477,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111707,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111733,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111733,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111733,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111911,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111963,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111963,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111963,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111988,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 111988,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 112218,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 112218,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 113011,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 113931,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 114034,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 114034,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 119556,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 119556,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 120170,
+      "key": "y",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 121193,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 121653,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 121704,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 122010,
+      "key": "y",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 122164,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 122216,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 123136,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 124261,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 125181,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 125284,
+      "key": "/",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 126306,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 127124,
+      "key": "/",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 127226,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 127329,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 129169,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 130227,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133141,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133466,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133466,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133466,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133466,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 133466,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 134386,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 134386,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 134488,
+      "key": "p",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 136227,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 136227,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 136227,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 136328,
+      "key": "p",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 136534,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 138068,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 138068,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 138238,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 138409,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 138579,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 142670,
+      "key": "i",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 144510,
+      "key": "i",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 144545,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 144716,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 145908,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 145926,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 146760,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 146761,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 150238,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 154124,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 154943,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 156783,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 159034,
+      "key": "u",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 159034,
+      "key": "o",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 159034,
+      "key": "h",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 162613,
+      "key": "u",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 162613,
+      "key": "o",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 162613,
+      "key": "h",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 162784,
+      "key": "l",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 162954,
+      "key": "n",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 163125,
+      "key": ",",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 170454,
+      "key": "l",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 170471,
+      "key": "n",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 170795,
+      "key": ",",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 170966,
+      "key": "k",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 171136,
+      "key": ";",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 171306,
+      "key": "m",
+      "action": "down",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 178636,
+      "key": "k",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 178653,
+      "key": ";",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    },
+    {
+      "time_ms": 179487,
+      "key": "m",
+      "action": "up",
+      "duration_ms": null,
+      "mapping_profile": "guitar"
+    }
+  ],
+  "metadata": {
+    "source_midi": "midis\\juebieshu2.mid",
+    "ppq": 128,
+    "tempo_event_count": 2
+  }
+}
