@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtGui import QAction
+import os
+
+from PySide6.QtGui import QAction, QIcon
 from PySide6.QtWidgets import QLabel, QMainWindow, QMenuBar, QStatusBar, QTabWidget, QVBoxLayout, QWidget
 
 from src.interfaces.gui.i18n import on_language_changed, set_language, tr
+from src.interfaces.gui.paths import base_path
 from src.interfaces.gui.style import set_theme
 from src.interfaces.gui.tabs.convert_tab import ConvertTab
 from src.interfaces.gui.tabs.mapping_tab import MappingTab
@@ -16,6 +19,10 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setMinimumSize(820, 600)
+
+        icon_path = os.path.join(base_path(), "assets", "icon.png")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
 
         self._build_menu()
 

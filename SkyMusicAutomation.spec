@@ -5,7 +5,7 @@ a = Analysis(
     ['src/interfaces/gui/app.py'],
     pathex=[],
     binaries=[],
-    datas=[('configs', 'configs')],
+    datas=[('configs', 'configs'), ('assets/icon.png', 'assets')],
     hiddenimports=[
         'pynput.keyboard._win32',
         'pynput.mouse._win32',
@@ -62,6 +62,7 @@ exe = EXE(
     [],
     exclude_binaries=True,
     name='SkyMusicAutomation',
+    icon='assets/icon.ico',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
