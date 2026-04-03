@@ -15,19 +15,7 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        include:
-          - os: windows-latest
-            artifact: SkyMusicAutomation-windows
-            ext: .zip
-          - os: ubuntu-latest
-            artifact: SkyMusicAutomation-linux
-            ext: .tar.gz
-          - os: macos-latest
-            artifact: SkyMusicAutomation-macos
-            ext: .tar.gz
-    runs-on: ${{ matrix.os }}
+    runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -46,21 +34,14 @@ jobs:
       - name: Build with PyInstaller
         run: pyinstaller --noconfirm --clean SkyMusicAutomation.spec
 
-      - name: Package (Windows)
-        if: runner.os == 'Windows'
+      - name: Package
         shell: pwsh
-        run: |
-          Compress-Archive -Path dist/SkyMusicAutomation/* -DestinationPath "${{ matrix.artifact }}${{ matrix.ext }}"
-
-      - name: Package (Linux / macOS)
-        if: runner.os != 'Windows'
-        run: |
-          tar -czf "${{ matrix.artifact }}${{ matrix.ext }}" -C dist/SkyMusicAutomation .
+        run: Compress-Archive -Path dist/SkyMusicAutomation/* -DestinationPath SkyMusicAutomation-windows.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}${{ matrix.ext }}
+          name: SkyMusicAutomation-windows
+          path: SkyMusicAutomation-windows.zip
 
   release:
     needs: build
