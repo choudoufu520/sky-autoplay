@@ -1,0 +1,23 @@
+default_profile: default
+profiles:
+  default:
+    note_to_key:
+      '60': y
+      '62': u
+      '64': i
+      '65': o
+      '67': p
+      '69': h
+      '71': j
+      '72': k
+      '74': l
+      '76': ;
+      '77': n
+      '79': m
+      '81': ','
+      '83': .
+      '84': /
+    transpose_semitones: 0
+    octave_shift: 0
+program_to_profile:
+  0: default
