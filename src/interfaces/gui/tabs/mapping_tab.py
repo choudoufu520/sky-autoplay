@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 
 from src.domain.mapping import MappingConfig, MappingProfile
 from src.infrastructure.repository import load_mapping, save_mapping
+from src.interfaces.gui.paths import default_mapping_path
 from src.interfaces.gui.i18n import on_language_changed, tr
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
@@ -50,7 +51,7 @@ class MappingTab(QWidget):
         file_row = QHBoxLayout()
         self.file_label = QLabel()
         file_row.addWidget(self.file_label)
-        self.file_edit = QLineEdit("configs/mapping.example.yaml")
+        self.file_edit = QLineEdit(default_mapping_path())
         file_row.addWidget(self.file_edit, 1)
         self.browse_btn = QPushButton()
         self.browse_btn.clicked.connect(self._browse)

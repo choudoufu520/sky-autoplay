@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 from src.application.converter import ConvertOptions, MappingError, convert_midi_to_chart
 from src.infrastructure.midi_reader import MidiKeyAnalysis, analyze_midi_key, list_midi_tracks
 from src.infrastructure.repository import load_mapping, save_chart
+from src.interfaces.gui.paths import default_mapping_path
 from src.interfaces.gui.i18n import on_language_changed, tr
 
 
@@ -46,7 +47,7 @@ class ConvertTab(QWidget):
         mapping_row = QHBoxLayout()
         self.mapping_label = QLabel()
         mapping_row.addWidget(self.mapping_label)
-        self.mapping_edit = QLineEdit("configs/mapping.example.yaml")
+        self.mapping_edit = QLineEdit(default_mapping_path())
         mapping_row.addWidget(self.mapping_edit, 1)
         self.mapping_browse = QPushButton()
         self.mapping_browse.clicked.connect(self._browse_mapping)
