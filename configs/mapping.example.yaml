@@ -1,54 +1,23 @@
-default_profile: guitar
-
+default_profile: default
 profiles:
-  lyre:
+  default:
+    note_to_key:
+      '60': y
+      '62': u
+      '64': i
+      '65': o
+      '67': p
+      '69': h
+      '71': j
+      '72': k
+      '74': l
+      '76': ;
+      '77': n
+      '79': m
+      '81': ','
+      '83': .
+      '84': /
     transpose_semitones: 0
     octave_shift: 0
-    note_to_key:
-      "60": "a"
-      "62": "s"
-      "64": "d"
-      "65": "f"
-      "67": "g"
-      "69": "h"
-      "71": "j"
-      "72": "k"
-      "74": "l"
-
-  piano:
-    transpose_semitones: 0
-    octave_shift: -1
-    note_to_key:
-      "48": "a"
-      "50": "s"
-      "52": "d"
-      "53": "f"
-      "55": "g"
-      "57": "h"
-      "59": "j"
-      "60": "k"
-      "62": "l"
-
-  guitar:
-    transpose_semitones: 0
-    octave_shift: 0
-    note_to_key:
-      "60": "y"
-      "62": "u"
-      "64": "i"
-      "65": "o"
-      "67": "p"
-      "69": "h"
-      "71": "j"
-      "72": "k"
-      "74": "l"
-      "76": ";"
-      "77": "n"
-      "79": "m"
-      "81": ","
-      "83": "."
-      "84": "/"
-
 program_to_profile:
-  0: piano
-  46: lyre
+  0: default

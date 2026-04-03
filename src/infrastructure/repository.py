@@ -19,6 +19,13 @@ def load_mapping(path: Path) -> MappingConfig:
     return config
 
 
+def save_mapping(path: Path, config: MappingConfig) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    data = config.model_dump()
+    with path.open("w", encoding="utf-8") as f:
+        yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+
+
 def save_chart(path: Path, chart: ChartDocument) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(chart.model_dump_json(indent=2), encoding="utf-8")

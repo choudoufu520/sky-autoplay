@@ -1,0 +1,91 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag (e.g. v0.1.0). Leave empty for snapshot build."
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: SkyMusicAutomation-windows
+            ext: .zip
+          - os: ubuntu-latest
+            artifact: SkyMusicAutomation-linux
+            ext: .tar.gz
+          - os: macos-latest
+            artifact: SkyMusicAutomation-macos
+            ext: .tar.gz
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ".[input,gui]"
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: pyinstaller --noconfirm --clean SkyMusicAutomation.spec
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist/SkyMusicAutomation/* -DestinationPath "${{ matrix.artifact }}${{ matrix.ext }}"
+
+      - name: Package (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          tar -czf "${{ matrix.artifact }}${{ matrix.ext }}" -C dist/SkyMusicAutomation .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.tag_name != ''
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            echo "name=${{ github.event.inputs.tag_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          name: ${{ steps.tag.outputs.name }}
+          generate_release_notes: true
+          files: artifacts/*

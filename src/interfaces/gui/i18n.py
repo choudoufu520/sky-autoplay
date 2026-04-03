@@ -1,0 +1,338 @@
+from __future__ import annotations
+
+from typing import Callable
+
+_listeners: list[Callable[[], None]] = []
+
+_current_lang = "zh"
+
+_T: dict[str, dict[str, str]] = {
+    "en": {
+        # ── common ──
+        "browse": "Browse",
+        "error": "Error",
+        "yes": "Yes",
+        "no": "No",
+        "unknown": "unknown",
+
+        # ── MainWindow ──
+        "window.title": "Sky Music Automation",
+        "tab.tracks": "\u2460 Tracks",
+        "tab.convert": "\u2461 Convert",
+        "tab.preview": "\u2462 Preview",
+        "tab.play": "\u2463 Play",
+        "status.ready": "Ready",
+        "status.midi_loaded": "MIDI loaded: {path}",
+        "status.chart_saved": "Chart saved: {path}",
+        "menu.language": "Language",
+        "menu.theme": "Theme",
+        "theme.dark": "Dark",
+        "theme.light": "Light",
+
+        # ── TracksTab ──
+        "tracks.midi_file": "MIDI File:",
+        "tracks.placeholder": "Select a .mid file...",
+        "tracks.load": "Load",
+        "tracks.col_index": "Index",
+        "tracks.col_name": "Name",
+        "tracks.col_messages": "Messages",
+        "tracks.col_note_on": "Note On",
+        "tracks.col_tempo": "Tempo",
+        "tracks.col_programs": "Programs",
+        "tracks.col_key": "Key",
+        "tracks.hint_double_click": "Tip: double-click a track row to jump to Preview and listen",
+        "tracks.info_ppq": "PPQ: {ppq}  |  Tracks: {count}",
+        "tracks.key_sig": "Key Signature: {sig}",
+        "tracks.detected": "Detected: {key} {mode}",
+        "tracks.suggest_transpose": "Suggested transpose: {val}",
+        "tracks.no_transpose": "Suggested transpose: 0 (already C major / A minor)",
+        "tracks.key_unknown": "Key: unknown",
+        "tracks.note_dist": "Note distribution (top 7): {dist}",
+        "tracks.dialog_title": "Select MIDI",
+
+        # ── ConvertTab ──
+        "convert.midi": "MIDI:",
+        "convert.midi_placeholder": "Select a .mid file...",
+        "convert.mapping": "Mapping:",
+        "convert.output": "Output:",
+        "convert.output_placeholder": "output/chart.json",
+        "convert.profile": "Profile:",
+        "convert.detected_key": "Detected Key:",
+        "convert.key_hint": "Key: (load MIDI in Tracks tab)",
+        "convert.transpose": "Transpose:",
+        "convert.apply_suggested": "Apply Suggested",
+        "convert.apply_tooltip": "Apply auto-detected transpose to match C major",
+        "convert.octave": "Octave:",
+        "convert.note_mode": "Note Mode:",
+        "convert.single_track": "Single Track:",
+        "convert.all": "All",
+        "convert.snap": "Snap to Nearest (approximate unmapped notes)",
+        "convert.strict": "Strict (fail on unmapped)",
+        "convert.btn": "Convert",
+        "convert.err_required": "Error: MIDI, Mapping, and Output paths are required.",
+        "convert.err_mapping": "Error loading mapping: {err}",
+        "convert.err_map": "Mapping error: {err}",
+        "convert.err_convert": "Convert error: {err}",
+        "convert.saved": "Chart saved: {path}",
+        "convert.events": "Events: {count}",
+        "convert.warnings": "Warnings: {count}",
+        "convert.no_transpose": "no transpose needed",
+        "convert.suggested": "suggested: {val}",
+        "convert.dialog_midi": "Select MIDI",
+        "convert.dialog_mapping": "Select Mapping",
+        "convert.dialog_output": "Save Chart",
+        "convert.tip_transpose": "Positive = pitch up, Negative = pitch down (semitones)",
+        "convert.tip_octave": "Positive = up octave, Negative = down octave",
+        "convert.tip_note_mode": "tap = short press / hold = long press",
+        "convert.tip_snap": "When enabled, sharps/flats snap to nearest available note",
+        "convert.tip_strict": "When enabled, conversion aborts on unmapped notes",
+
+        # ── PreviewTab ──
+        "preview.midi": "MIDI:",
+        "preview.midi_placeholder": "Select a .mid file...",
+        "preview.track": "Track:",
+        "preview.save_to": "Save to:",
+        "preview.save_placeholder": "(optional) output/track.mid",
+        "preview.btn_preview": "Preview (System Player)",
+        "preview.btn_export": "Export Only",
+        "preview.err_no_midi": "Error: No MIDI file selected",
+        "preview.exported": "Exported: {path}",
+        "preview.opened": "Opened: {path}",
+        "preview.dialog_midi": "Select MIDI",
+        "preview.dialog_save": "Save Track MIDI",
+
+        # ── MappingTab ──
+        "tab.mapping": "Mapping",
+        "mapping.file": "Mapping File:",
+        "mapping.file_placeholder": "configs/mapping.example.yaml",
+        "mapping.load": "Load",
+        "mapping.save": "Save",
+        "mapping.save_as": "Save As",
+        "mapping.default_profile": "Default Profile:",
+        "mapping.profiles": "Profiles",
+        "mapping.add_profile": "Add",
+        "mapping.del_profile": "Delete",
+        "mapping.rename_profile": "Rename",
+        "mapping.transpose": "Transpose Semitones:",
+        "mapping.octave": "Octave Shift:",
+        "mapping.note_to_key": "Note → Key Mapping",
+        "mapping.col_note": "MIDI Note",
+        "mapping.col_key": "Key",
+        "mapping.col_note_name": "Note Name",
+        "mapping.add_row": "Add Row",
+        "mapping.del_row": "Delete Row",
+        "mapping.program_map": "Program → Profile",
+        "mapping.col_program": "Program",
+        "mapping.col_profile": "Profile",
+        "mapping.add_program": "Add",
+        "mapping.del_program": "Delete",
+        "mapping.saved": "Mapping saved: {path}",
+        "mapping.loaded": "Mapping loaded: {path}",
+        "mapping.err_load": "Error loading mapping: {err}",
+        "mapping.err_save": "Error saving mapping: {err}",
+        "mapping.err_no_file": "Error: No mapping file specified",
+        "mapping.dialog_open": "Open Mapping",
+        "mapping.dialog_save": "Save Mapping As",
+        "mapping.confirm_delete": "Confirm delete profile \"{name}\"?",
+        "mapping.input_name": "Profile name:",
+        "mapping.input_new_name": "New name:",
+        "mapping.unsaved": "(unsaved)",
+
+        # ── PlayTab ──
+        "play.chart": "Chart:",
+        "play.chart_placeholder": "Select chart JSON...",
+        "play.latency": "Latency Offset:",
+        "play.countdown": "Countdown:",
+        "play.stagger": "Chord Stagger:",
+        "play.dry_run": "Dry Run (no key output)",
+        "play.debug": "Debug Log",
+        "play.start": "Start Play",
+        "play.stop": "Stop",
+        "play.err_no_chart": "Error: No chart file selected",
+        "play.err_load": "Error loading chart: {err}",
+        "play.starting": "Starting playback...",
+        "play.dialog_chart": "Select Chart",
+        "play.tip_latency": "Compensate input delay; positive = send keys earlier",
+        "play.tip_countdown": "Countdown before playback starts (switch to game window)",
+        "play.tip_stagger": "Delay between simultaneous keys to avoid the game missing inputs",
+        "play.tip_dry_run": "Simulate playback without sending actual key presses (for testing)",
+    },
+    "zh": {
+        # ── common ──
+        "browse": "浏览",
+        "error": "错误",
+        "yes": "是",
+        "no": "否",
+        "unknown": "未知",
+
+        # ── MainWindow ──
+        "window.title": "光遇自动演奏工具",
+        "tab.tracks": "\u2460 轨道",
+        "tab.convert": "\u2461 转换",
+        "tab.preview": "\u2462 预览",
+        "tab.play": "\u2463 演奏",
+        "status.ready": "就绪",
+        "status.midi_loaded": "MIDI 已加载：{path}",
+        "status.chart_saved": "谱面已保存：{path}",
+        "menu.language": "语言 / Language",
+        "menu.theme": "主题",
+        "theme.dark": "深色",
+        "theme.light": "浅色",
+
+        # ── TracksTab ──
+        "tracks.midi_file": "MIDI 文件：",
+        "tracks.placeholder": "选择 .mid 文件…",
+        "tracks.load": "加载",
+        "tracks.col_index": "序号",
+        "tracks.col_name": "名称",
+        "tracks.col_messages": "消息数",
+        "tracks.col_note_on": "音符数",
+        "tracks.col_tempo": "速度",
+        "tracks.col_programs": "音色",
+        "tracks.col_key": "调性",
+        "tracks.hint_double_click": "提示：双击轨道行可跳转到预览页试听",
+        "tracks.info_ppq": "PPQ：{ppq}  |  轨道数：{count}",
+        "tracks.key_sig": "调号标记：{sig}",
+        "tracks.detected": "检测调性：{key} {mode}",
+        "tracks.suggest_transpose": "建议移调：{val}",
+        "tracks.no_transpose": "建议移调：0（已是 C 大调 / A 小调）",
+        "tracks.key_unknown": "调性：未知",
+        "tracks.note_dist": "音符分布（前 7）：{dist}",
+        "tracks.dialog_title": "选择 MIDI 文件",
+
+        # ── ConvertTab ──
+        "convert.midi": "MIDI：",
+        "convert.midi_placeholder": "选择 .mid 文件…",
+        "convert.mapping": "映射文件：",
+        "convert.output": "输出：",
+        "convert.output_placeholder": "output/chart.json",
+        "convert.profile": "配置：",
+        "convert.detected_key": "检测调性：",
+        "convert.key_hint": "调性：（请先在轨道标签页加载 MIDI）",
+        "convert.transpose": "移调：",
+        "convert.apply_suggested": "应用建议",
+        "convert.apply_tooltip": "应用自动检测的移调值以匹配 C 大调",
+        "convert.octave": "八度：",
+        "convert.note_mode": "音符模式：",
+        "convert.single_track": "单轨道：",
+        "convert.all": "全部",
+        "convert.snap": "就近吸附（近似未映射音符）",
+        "convert.strict": "严格模式（未映射时报错）",
+        "convert.btn": "转换",
+        "convert.err_required": "错误：MIDI、映射和输出路径均为必填。",
+        "convert.err_mapping": "加载映射失败：{err}",
+        "convert.err_map": "映射错误：{err}",
+        "convert.err_convert": "转换错误：{err}",
+        "convert.saved": "谱面已保存：{path}",
+        "convert.events": "事件数：{count}",
+        "convert.warnings": "警告数：{count}",
+        "convert.no_transpose": "无需移调",
+        "convert.suggested": "建议：{val}",
+        "convert.dialog_midi": "选择 MIDI 文件",
+        "convert.dialog_mapping": "选择映射文件",
+        "convert.dialog_output": "保存谱面",
+        "convert.tip_transpose": "正值升调，负值降调，单位：半音",
+        "convert.tip_octave": "正值升八度，负值降八度",
+        "convert.tip_note_mode": "tap = 短按 / hold = 长按",
+        "convert.tip_snap": "开启后，升降号自动吸附到最近的可用音",
+        "convert.tip_strict": "开启后，遇到无法映射的音符会中止转换",
+
+        # ── PreviewTab ──
+        "preview.midi": "MIDI：",
+        "preview.midi_placeholder": "选择 .mid 文件…",
+        "preview.track": "轨道：",
+        "preview.save_to": "保存至：",
+        "preview.save_placeholder": "（可选）output/track.mid",
+        "preview.btn_preview": "预览（系统播放器）",
+        "preview.btn_export": "仅导出",
+        "preview.err_no_midi": "错误：未选择 MIDI 文件",
+        "preview.exported": "已导出：{path}",
+        "preview.opened": "已打开：{path}",
+        "preview.dialog_midi": "选择 MIDI 文件",
+        "preview.dialog_save": "保存轨道 MIDI",
+
+        # ── MappingTab ──
+        "tab.mapping": "按键映射",
+        "mapping.file": "映射文件：",
+        "mapping.file_placeholder": "configs/mapping.example.yaml",
+        "mapping.load": "加载",
+        "mapping.save": "保存",
+        "mapping.save_as": "另存为",
+        "mapping.default_profile": "默认配置：",
+        "mapping.profiles": "配置列表",
+        "mapping.add_profile": "添加",
+        "mapping.del_profile": "删除",
+        "mapping.rename_profile": "重命名",
+        "mapping.transpose": "移调半音数：",
+        "mapping.octave": "八度偏移：",
+        "mapping.note_to_key": "音符 → 按键映射",
+        "mapping.col_note": "MIDI 音符",
+        "mapping.col_key": "按键",
+        "mapping.col_note_name": "音名",
+        "mapping.add_row": "添加行",
+        "mapping.del_row": "删除行",
+        "mapping.program_map": "音色 → 配置映射",
+        "mapping.col_program": "音色号",
+        "mapping.col_profile": "配置",
+        "mapping.add_program": "添加",
+        "mapping.del_program": "删除",
+        "mapping.saved": "映射已保存：{path}",
+        "mapping.loaded": "映射已加载：{path}",
+        "mapping.err_load": "加载映射失败：{err}",
+        "mapping.err_save": "保存映射失败：{err}",
+        "mapping.err_no_file": "错误：未指定映射文件",
+        "mapping.dialog_open": "打开映射文件",
+        "mapping.dialog_save": "另存为映射文件",
+        "mapping.confirm_delete": "确认删除配置「{name}」？",
+        "mapping.input_name": "配置名称：",
+        "mapping.input_new_name": "新名称：",
+        "mapping.unsaved": "（未保存）",
+
+        # ── PlayTab ──
+        "play.chart": "谱面：",
+        "play.chart_placeholder": "选择谱面 JSON…",
+        "play.latency": "延迟补偿：",
+        "play.countdown": "倒计时：",
+        "play.stagger": "和弦错开：",
+        "play.dry_run": "空跑模式（不发送按键）",
+        "play.debug": "调试日志",
+        "play.start": "开始演奏",
+        "play.stop": "停止",
+        "play.err_no_chart": "错误：未选择谱面文件",
+        "play.err_load": "加载谱面失败：{err}",
+        "play.starting": "正在开始演奏…",
+        "play.dialog_chart": "选择谱面",
+        "play.tip_latency": "补偿输入延迟，正值提前发送按键",
+        "play.tip_countdown": "按下开始后的倒计时，用于切换到游戏窗口",
+        "play.tip_stagger": "同时按下多个键时的间隔，避免游戏漏键",
+        "play.tip_dry_run": "模拟演奏，不实际发送按键，用于调试",
+    },
+}
+
+
+def tr(key: str) -> str:
+    table = _T.get(_current_lang, _T["en"])
+    return table.get(key, _T["en"].get(key, key))
+
+
+def current_language() -> str:
+    return _current_lang
+
+
+def set_language(lang: str) -> None:
+    global _current_lang
+    if lang in _T:
+        _current_lang = lang
+        for fn in _listeners:
+            fn()
+
+
+def on_language_changed(fn: Callable[[], None]) -> None:
+    _listeners.append(fn)
+
+
+def remove_listener(fn: Callable[[], None]) -> None:
+    try:
+        _listeners.remove(fn)
+    except ValueError:
+        pass

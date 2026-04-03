@@ -43,6 +43,7 @@ def convert_command(
     transpose: int = typer.Option(0, "--transpose", help="Semitone shift (CLI-level)"),
     octave: int = typer.Option(0, "--octave", help="Octave shift (CLI-level)"),
     strict: bool = typer.Option(False, "--strict", help="Fail on any unmapped note"),
+    snap: bool = typer.Option(False, "--snap", help="Snap unmapped notes to nearest mapped note"),
     note_mode: str = typer.Option("tap", "--note-mode", help="tap or hold"),
     single_track: int | None = typer.Option(None, "--single-track", help="Read a specific MIDI track"),
 ) -> None:
@@ -56,6 +57,7 @@ def convert_command(
         transpose=transpose,
         octave=octave,
         strict=strict,
+        snap=snap,
         note_mode=note_mode,
         single_track=single_track,
     )
@@ -136,6 +138,7 @@ def preview_track_game_command(
     octave: int = typer.Option(0, "--octave", help="Octave shift"),
     note_mode: str = typer.Option("tap", "--note-mode", help="tap or hold"),
     strict: bool = typer.Option(False, "--strict", help="Fail on unmapped note"),
+    snap: bool = typer.Option(False, "--snap", help="Snap unmapped notes to nearest mapped note"),
     latency_offset_ms: int = typer.Option(0, "--latency-offset-ms"),
     countdown_sec: int = typer.Option(3, "--countdown-sec"),
     chord_stagger_ms: int = typer.Option(0, "--chord-stagger-ms"),
@@ -152,6 +155,7 @@ def preview_track_game_command(
         transpose=transpose,
         octave=octave,
         strict=strict,
+        snap=snap,
         note_mode=note_mode,
         single_track=track,
     )

@@ -102,3 +102,6 @@ Start-Process -Verb RunAs -FilePath "python" -WorkingDirectory "D:\work\df-guanc
 ## 合规与风险
 
 《Sky 光遇》为在线游戏，自动化输入可能违反服务条款并带来账号风险。请先确认平台与游戏规则，谨慎自担使用风险。
+
+
+Start-Process -Verb RunAs -FilePath "python" -WorkingDirectory "D:\work\df-guance" -ArgumentList "-m","src.interfaces.gui.app"

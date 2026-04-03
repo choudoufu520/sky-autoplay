@@ -1,9 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from mido import MidiFile, merge_tracks, tick2second
+
+PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+
+MAJOR_PROFILE = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
+MINOR_PROFILE = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
 
 
 @dataclass(slots=True)
@@ -111,6 +117,70 @@ def list_midi_tracks(midi_path: Path) -> tuple[int, list[MidiTrackInfo]]:
         )
 
     return midi.ticks_per_beat, infos
+
+
+@dataclass(slots=True)
+class MidiKeyAnalysis:
+    key_signature: str | None = None
+    detected_key: str | None = None
+    detected_mode: str | None = None
+    suggested_transpose: int = 0
+    note_distribution: list[tuple[str, int]] = field(default_factory=list)
+
+
+def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKeyAnalysis:
+    midi = MidiFile(str(midi_path))
+    result = MidiKeyAnalysis()
+
+    scan_tracks = (
+        [midi.tracks[single_track]] if single_track is not None and 0 <= single_track < len(midi.tracks)
+        else midi.tracks
+    )
+
+    for track in scan_tracks:
+        for msg in track:
+            if msg.type == "key_signature":
+                result.key_signature = f"{msg.key} {'major' if msg.key.islower() is False else 'minor'}"
+                break
+        if result.key_signature:
+            break
+
+    pitch_counts: Counter[int] = Counter()
+    note_stream = scan_tracks[0] if len(scan_tracks) == 1 else merge_tracks(scan_tracks)
+    for msg in note_stream:
+        if msg.type == "note_on" and msg.velocity > 0:
+            pitch_counts[msg.note % 12] += 1
+
+    if not pitch_counts:
+        return result
+
+    result.note_distribution = [
+        (PITCH_NAMES[pc], pitch_counts.get(pc, 0)) for pc in range(12)
+    ]
+    result.note_distribution.sort(key=lambda x: -x[1])
+
+    best_key, best_mode, best_score = "C", "major", -1.0
+    for root in range(12):
+        for mode_name, profile in [("major", MAJOR_PROFILE), ("minor", MINOR_PROFILE)]:
+            score = sum(
+                pitch_counts.get((root + i) % 12, 0) * profile[i] for i in range(12)
+            )
+            if score > best_score:
+                best_score = score
+                best_key = PITCH_NAMES[root]
+                best_mode = mode_name
+
+    result.detected_key = best_key
+    result.detected_mode = best_mode
+
+    root_index = PITCH_NAMES.index(best_key)
+    if best_mode == "major":
+        result.suggested_transpose = -root_index if root_index <= 6 else 12 - root_index
+    else:
+        relative_major = (root_index + 3) % 12
+        result.suggested_transpose = -relative_major if relative_major <= 6 else 12 - relative_major
+
+    return result
 
 
 def export_single_track_midi(
