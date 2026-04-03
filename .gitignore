@@ -29,7 +29,6 @@ htmlcov/
 # PyInstaller
 build/
 dist/
-*.spec
 
 # Output (generated charts / exported tracks)
 output/
