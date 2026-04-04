@@ -204,6 +204,10 @@ class ConvertTab(QWidget):
         ai_layout.addWidget(self.ai_feedback_edit)
 
         ai_action_row = QHBoxLayout()
+        self.ai_preview_btn = QPushButton()
+        self.ai_preview_btn.setVisible(False)
+        self.ai_preview_btn.clicked.connect(self._preview_ai_mapping)
+        ai_action_row.addWidget(self.ai_preview_btn)
         self.ai_apply_btn = QPushButton()
         self.ai_apply_btn.setVisible(False)
         self.ai_apply_btn.clicked.connect(self._apply_review_table)
@@ -317,6 +321,7 @@ class ConvertTab(QWidget):
             tr("convert.ai_review_action"),
         ])
         self.ai_feedback_edit.setPlaceholderText(tr("convert.ai_feedback_placeholder"))
+        self.ai_preview_btn.setText(tr("convert.ai_preview"))
         self.ai_apply_btn.setText(tr("convert.ai_apply"))
         self.ai_retry_btn.setText(tr("convert.ai_retry"))
         self.ai_cancel_btn.setText(tr("convert.ai_cancel"))
@@ -518,6 +523,7 @@ class ConvertTab(QWidget):
         self.ai_review_table.setVisible(is_remap)
         self.ai_feedback_edit.setVisible(True)
         self.ai_feedback_edit.clear()
+        self.ai_preview_btn.setVisible(True)
         self.ai_apply_btn.setVisible(True)
         self.ai_retry_btn.setVisible(True)
         self.ai_cancel_btn.setVisible(True)
@@ -526,6 +532,7 @@ class ConvertTab(QWidget):
         self.ai_review_table.setVisible(False)
         self.ai_review_table.setRowCount(0)
         self.ai_feedback_edit.setVisible(False)
+        self.ai_preview_btn.setVisible(False)
         self.ai_apply_btn.setVisible(False)
         self.ai_retry_btn.setVisible(False)
         self.ai_cancel_btn.setVisible(False)
@@ -607,6 +614,71 @@ class ConvertTab(QWidget):
 
         self._exit_review_mode()
         self.ai_status_label.setText(status_msg)
+
+    def _preview_ai_mapping(self) -> None:
+        import os
+        import tempfile
+
+        from src.application.ai_arranger import AiArrangeResult
+
+        result = self._ai_last_result
+        if not isinstance(result, AiArrangeResult):
+            return
+
+        midi_path = self.midi_edit.text().strip()
+        mapping_path = self.mapping_edit.text().strip()
+        if not midi_path or not mapping_path:
+            return
+
+        try:
+            mapping_config = load_mapping(Path(mapping_path))
+        except Exception:
+            return
+
+        ai_note_map: dict[int, int] | None = None
+        ai_position_map: dict[tuple[int, int], int] | None = None
+
+        if result.mode == "remap":
+            note_map: dict[int, int] = {}
+            for row in range(self.ai_review_table.rowCount()):
+                orig_item = self.ai_review_table.item(row, 0)
+                combo = self.ai_review_table.cellWidget(row, 4)
+                if orig_item and isinstance(combo, QComboBox):
+                    orig = int(orig_item.text())
+                    repl = combo.currentData()
+                    if isinstance(repl, int):
+                        note_map[orig] = repl
+            ai_note_map = note_map if note_map else None
+        elif result.mode == "context" and result.position_map:
+            pos_dict: dict[tuple[int, int], int] = {}
+            for pr in result.position_map:
+                pos_dict[(pr.time_ms, pr.original)] = pr.replacement
+            ai_position_map = pos_dict
+
+        profile = self.profile_combo.currentText().strip() or None
+        single_track_val = self.single_track_combo.currentData()
+
+        options = ConvertOptions(
+            profile=profile,
+            transpose=self.transpose_spin.value(),
+            octave=self.octave_spin.value(),
+            strict=self.strict_check.isChecked(),
+            snap=self.snap_check.isChecked(),
+            note_mode=self.note_mode_combo.currentText(),
+            single_track=single_track_val,
+            ai_note_map=ai_note_map,
+            ai_position_map=ai_position_map or {},
+        )
+
+        try:
+            chart, _warnings = convert_midi_to_chart(Path(midi_path), mapping_config, options)
+            tmp = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
+            tmp.close()
+            preview_path = Path(tmp.name)
+            chart_to_preview_midi(chart, mapping_config, preview_path)
+            os.startfile(str(preview_path))  # type: ignore[attr-defined]
+        except Exception as exc:
+            self.ai_status_label.setText(tr("convert.ai_preview_err").format(err=exc))
 
     def _retry_with_feedback(self) -> None:
         from src.application.ai_arranger import AiArrangeResult

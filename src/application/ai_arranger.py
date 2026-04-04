@@ -145,6 +145,13 @@ def build_remap_prompt(
 
     meta_block = _format_midi_meta(meta, filename) if meta else ""
 
+    total_unmapped = sum(unmapped_counts[n] for n in unmapped)
+    high_freq = [n for n in unmapped if unmapped_counts[n] >= max(3, total_unmapped * 0.1)]
+    high_freq_hint = ""
+    if high_freq:
+        names = ", ".join(f"{n}({_midi_to_name(n)})" for n in high_freq)
+        high_freq_hint = f"\nHIGH-FREQUENCY NOTES (appear often, choose replacements extra carefully): {names}\n"
+
     return f"""You are a professional music arranger.
 {meta_block}
 An instrument only has these notes available:
@@ -153,13 +160,19 @@ Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_t
 
 The following MIDI notes from the original piece cannot be played on this instrument:
 {chr(10).join(unmapped_lines)}
+{high_freq_hint}
+For each unmapped note, suggest which available note should replace it.
 
-For each unmapped note, suggest which available note should replace it. Follow these principles IN ORDER OF PRIORITY:
-1. PRESERVE REGISTER — keep the replacement as close to the original pitch as possible. Do NOT drop notes down an octave unless absolutely necessary.
-2. PRESERVE EMOTION — high notes carry tension and brightness; map them to the HIGHEST available notes rather than folding down. Low notes carry depth; map them to the LOWEST available notes.
-3. PREFER SAME DIRECTION — if the original note is above the range, map to the highest available note. If below, map to the lowest.
-4. SHARPS/FLATS — for accidentals (e.g. C#, Eb), prefer the adjacent natural note that fits the musical context (usually the note a half-step away in the direction of the melody).
-5. MINIMIZE OCTAVE FOLDING — only fold into a different octave as a last resort, and prefer folding UP over DOWN to preserve brightness.
+=== REPLACEMENT PRINCIPLES ===
+1. CLOSEST PITCH — replacement must be as close to the original as possible. Prefer the nearest available note (up or down).
+2. PRESERVE DIRECTION — if the note is above the instrument range, map to the highest available note. If below, map to the lowest.
+3. SHARPS/FLATS — for accidentals (C#, Eb), prefer the adjacent natural note that fits the musical context (half-step toward the key center).
+4. PRESERVE EMOTION — high notes carry tension/brightness; do NOT fold them down. Low notes carry depth; do NOT fold them up. Keep the emotional register.
+5. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, fold UP rather than DOWN.
+
+=== FORBIDDEN ===
+- Do NOT map two different adjacent unmapped notes to the same replacement. Each distinct original pitch should get a distinct replacement when possible.
+- Do NOT create semitone clusters: if two unmapped notes are next to each other (e.g. 61 and 63), their replacements must not be adjacent semitones (e.g. both mapping to 60).
 {style_block}
 Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
@@ -193,6 +206,71 @@ def parse_remap_response(response: str) -> dict[int, int]:
 # ── Context mode ────────────────────────────────────────────
 
 
+@dataclass(slots=True)
+class _NoteGroup:
+    """Notes sounding at approximately the same time."""
+    time_ms: int
+    notes: list[tuple[int, int, str]]  # (final_note, duration_ms, status)
+
+
+def _group_notes_by_time(
+    events: list[RawMidiEvent],
+    shift: int,
+    available_set: set[int],
+    threshold_ms: int = 30,
+) -> list[_NoteGroup]:
+    """Group simultaneous notes together (within threshold_ms)."""
+    if not events:
+        return []
+    groups: list[_NoteGroup] = []
+    current = _NoteGroup(time_ms=events[0].time_ms, notes=[])
+    for ev in events:
+        final = ev.note + shift
+        status = "OK" if final in available_set else "UNMAPPED"
+        if ev.time_ms - current.time_ms > threshold_ms:
+            if current.notes:
+                groups.append(current)
+            current = _NoteGroup(time_ms=ev.time_ms, notes=[])
+        current.notes.append((final, ev.duration_ms, status))
+    if current.notes:
+        groups.append(current)
+    return groups
+
+
+def _format_grouped_sequence(
+    groups: list[_NoteGroup],
+    meta: MidiMeta | None,
+) -> str:
+    """Format note groups with bar markers and melody tags."""
+    bar_ms = 2000.0
+    if meta:
+        try:
+            parts = meta.time_signature.split("/")
+            beats = int(parts[0])
+        except (ValueError, IndexError):
+            beats = 4
+        if meta.bpm > 0:
+            bar_ms = (60_000 / meta.bpm) * beats
+
+    lines: list[str] = []
+    current_bar = 0
+    for g in groups:
+        bar_num = int(g.time_ms / bar_ms) + 1
+        if bar_num != current_bar:
+            current_bar = bar_num
+            lines.append(f"\n--- Bar {bar_num} ---")
+
+        highest = max(n[0] for n in g.notes)
+        parts: list[str] = []
+        for note, dur, status in sorted(g.notes, key=lambda x: x[0]):
+            tag = f" [{status}]"
+            if note == highest:
+                tag += " [MELODY]"
+            parts.append(f"{note}({_midi_to_name(note)}) dur={dur}ms{tag}")
+        lines.append(f"[t={g.time_ms}ms] {' | '.join(parts)}")
+    return "\n".join(lines)
+
+
 def build_context_prompt(
     available: list[int],
     events: list[RawMidiEvent],
@@ -204,11 +282,8 @@ def build_context_prompt(
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
-    note_lines: list[str] = []
-    for ev in events:
-        final = ev.note + shift
-        mapped = "OK" if final in available_set else "UNMAPPED"
-        note_lines.append(f"  t={ev.time_ms}ms, note={final}({_midi_to_name(final)}), dur={ev.duration_ms}ms [{mapped}]")
+    groups = _group_notes_by_time(events, shift, available_set)
+    sequence_text = _format_grouped_sequence(groups, meta)
 
     avail_min = min(available)
     avail_max = max(available)
@@ -226,26 +301,39 @@ An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
 
-Below is the note sequence from a MIDI track. Notes marked [UNMAPPED] cannot be played on this instrument.
-Analyze the melodic and harmonic context, then for each [UNMAPPED] note, suggest the best available replacement.
-The same original note at different positions MAY map to different replacements based on context.
+Below is the note sequence from a MIDI track, grouped by simultaneous notes and organized by bar.
+- Notes marked [UNMAPPED] cannot be played on this instrument and need replacements.
+- Notes marked [MELODY] are the highest note in each group (typically the melody voice).
+- Notes without [MELODY] are accompaniment/chord tones.
 
-ARRANGEMENT PRINCIPLES (in priority order):
-1. PRESERVE REGISTER — keep replacements as close to the original pitch as possible. Do NOT systematically drop notes down an octave.
-2. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry depth/warmth. Map high out-of-range notes to the HIGHEST available notes, not the lowest.
-3. PRESERVE MELODIC CONTOUR — if the original melody rises, the replacement should also rise (or stay level). If it falls, the replacement should also fall. The direction of movement matters more than exact intervals.
-4. PRESERVE INTERVALS — try to maintain the relative distance between consecutive notes. If two notes were a 3rd apart, their replacements should ideally also be roughly a 3rd apart.
-5. SHARPS/FLATS — for accidentals, choose the adjacent available note that best maintains the melodic direction.
-6. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When folding is unavoidable, prefer folding UP over DOWN.
+For each [UNMAPPED] note, suggest the best available replacement. The same original note at different positions MAY map to different replacements based on context.
+
+=== MELODY NOTES (tagged [MELODY]) ===
+These carry the main tune the listener hears. Treat with highest care:
+1. PRESERVE MELODIC CONTOUR — if the melody rises, the replacement must also rise. If it falls, the replacement must fall. Direction is more important than exact pitch.
+2. PRESERVE REGISTER — replacement must be as close to the original pitch as possible. NEVER move a melody note down by more than one octave.
+3. PRESERVE INTERVALS — maintain the relative distance between consecutive melody notes. A 3rd should stay roughly a 3rd.
+4. NO CONSECUTIVE DUPLICATES — do not map two originally different consecutive melody notes to the same replacement (unless the original already repeated).
+
+=== ACCOMPANIMENT / CHORD NOTES ===
+These provide harmonic support. More flexibility allowed:
+1. KEEP CHORD FUNCTION — prefer notes that preserve the chord quality (root, 3rd, 5th).
+2. AVOID CLASHES — within the same group, do not create adjacent semitones (e.g. C and C#) in the replacements.
+3. SIMPLIFICATION OK — if a chord has too many unmapped notes, it is better to keep root + one color tone than to force all notes into awkward positions.
+
+=== GENERAL RULES ===
+1. SHARPS/FLATS — for accidentals (C#, Eb, etc.), prefer the adjacent natural note in the direction of the melody movement.
+2. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, prefer folding UP over DOWN.
+3. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry warmth/depth. Do not systematically flatten the pitch range.
 {style_block}
 
 Note sequence:
-{chr(10).join(note_lines)}
+{sequence_text}
 
 Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
 ## Analysis
-简要说明你的编曲策略：共有多少音符未映射、影响哪些音高范围、你的整体处理方案。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
+简要说明你的编曲策略：共有多少音符未映射、影响哪些音高范围、旋律音和伴奏音分别如何处理。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
 
 ## Mapping
 A JSON array of replacements for UNMAPPED notes, like:

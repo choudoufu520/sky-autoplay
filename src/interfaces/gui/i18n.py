@@ -129,6 +129,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_cancel": "Cancel",
         "convert.ai_analyze_done": "Analysis complete ({sec}s). Review and edit below:",
         "convert.ai_applied_direct": "Applied {count} mapping(s) from review table",
+        "convert.ai_preview": "Preview",
+        "convert.ai_preview_err": "Preview failed: {err}",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI:",
@@ -348,6 +350,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_cancel": "取消",
         "convert.ai_analyze_done": "分析完成（{sec}s），请审阅并修改：",
         "convert.ai_applied_direct": "已从审阅表应用 {count} 条映射",
+        "convert.ai_preview": "试听预览",
+        "convert.ai_preview_err": "预览失败：{err}",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI：",
