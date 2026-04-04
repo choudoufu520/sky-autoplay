@@ -31,7 +31,9 @@ class UpdateInfo:
 
 
 def _parse_version(v: str) -> tuple[int, ...]:
-    return tuple(int(x) for x in v.lstrip("v").split("."))
+    import re
+    clean = re.sub(r"[^0-9.].*", "", v.lstrip("v"))
+    return tuple(int(x) for x in clean.split(".") if x)
 
 
 def is_frozen() -> bool:
@@ -61,8 +63,11 @@ def check_for_update() -> UpdateInfo:
 
     has_update = False
     try:
-        has_update = _parse_version(remote_version) > _parse_version(__version__)
-    except (ValueError, TypeError):
+        remote_parts = _parse_version(remote_version)
+        local_parts = _parse_version(__version__)
+        if remote_parts and local_parts:
+            has_update = remote_parts > local_parts
+    except Exception:
         pass
 
     return UpdateInfo(

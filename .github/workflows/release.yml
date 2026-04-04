@@ -37,6 +37,8 @@ jobs:
           if ($ver -match '^\d+\.\d+') {
             (Get-Content pyproject.toml) -replace 'version = ".*?"', "version = `"$ver`"" |
               Set-Content pyproject.toml
+            (Get-Content src/__init__.py) -replace '__version__ = ".*?"', "__version__ = `"$ver`"" |
+              Set-Content src/__init__.py
             Write-Host "Stamped version: $ver"
           }
 
