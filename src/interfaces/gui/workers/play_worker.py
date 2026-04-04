@@ -12,6 +12,9 @@ from src.infrastructure.input_backends import BaseInputBackend
 class PlayWorker(QThread):
     log_message = Signal(str)
     finished_signal = Signal(bool, str)
+    progress_signal = Signal(int, int, int, int)
+    countdown_signal = Signal(int)
+    key_display_signal = Signal(object)
 
     def __init__(
         self,
@@ -34,6 +37,9 @@ class PlayWorker(QThread):
                 self.options,
                 stop_event=self.stop_event,
                 log=self._emit_log,
+                progress=self._emit_progress,
+                countdown=self._emit_countdown,
+                key_display=self._emit_key_display,
             )
             if self.stop_event.is_set():
                 self.finished_signal.emit(False, "Playback stopped by user")
@@ -44,6 +50,19 @@ class PlayWorker(QThread):
 
     def _emit_log(self, msg: str) -> None:
         self.log_message.emit(msg)
+
+    def _emit_progress(self, current: int, total: int, elapsed_ms: int, total_ms: int) -> None:
+        self.progress_signal.emit(current, total, elapsed_ms, total_ms)
+
+    def _emit_countdown(self, remain: int) -> None:
+        self.countdown_signal.emit(remain)
+
+    def _emit_key_display(
+        self,
+        current_keys: list[str],
+        upcoming: list[tuple[int, str]],
+    ) -> None:
+        self.key_display_signal.emit((current_keys, upcoming))
 
     def request_stop(self) -> None:
         self.stop_event.set()

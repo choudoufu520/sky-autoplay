@@ -86,6 +86,32 @@ _T: dict[str, dict[str, str]] = {
         "convert.tip_note_mode": "tap = short press / hold = long press",
         "convert.tip_snap": "When enabled, sharps/flats snap to nearest available note",
         "convert.tip_strict": "When enabled, conversion aborts on unmapped notes",
+        "convert.preview_midi": "Generate preview MIDI (audition result)",
+        "convert.listen": "Listen",
+        "convert.preview_midi_saved": "Preview MIDI saved: {path}",
+        "convert.preview_midi_err": "Preview MIDI error: {err}",
+
+        # ── AI Arrange ──
+        "convert.ai_group": "AI Intelligent Arrangement",
+        "convert.ai_key": "API Key:",
+        "convert.ai_url": "Base URL:",
+        "convert.ai_model": "Model:",
+        "convert.ai_mode": "Mode:",
+        "convert.ai_mode_remap": "Note Remap (fast)",
+        "convert.ai_mode_context": "Context Arrange (smart)",
+        "convert.ai_mode_tip": "Remap: same note always maps to same replacement.\nContext: AI considers melody context, same note may map differently at different positions.",
+        "convert.ai_arrange": "AI Arrange",
+        "convert.ai_url_placeholder": "(optional) custom OpenAI-compatible endpoint",
+        "convert.ai_tip": "Use AI to intelligently remap notes outside the instrument range",
+        "convert.ai_err_key": "Error: API Key is required for AI arrangement",
+        "convert.ai_working": "AI is analyzing notes, please wait...",
+        "convert.ai_working_time": "AI analyzing notes... {sec}s elapsed",
+        "convert.ai_done": "AI remap complete: {mapped} notes remapped ({unmapped} unmapped total)",
+        "convert.ai_done_context": "AI context arrange complete: {mapped} position(s) remapped ({unmapped} unique unmapped notes)",
+        "convert.ai_err": "AI error: {err}",
+        "convert.ai_applied": "AI remapped {count} note(s)",
+        "convert.ai_applied_context": "AI context-remapped {count} position(s)",
+        "convert.ai_copy": "Copy",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI:",
@@ -156,6 +182,13 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_countdown": "Countdown before playback starts (switch to game window)",
         "play.tip_stagger": "Delay between simultaneous keys to avoid the game missing inputs",
         "play.tip_dry_run": "Simulate playback without sending actual key presses (for testing)",
+
+        # ── Overlay ──
+        "overlay.playing": "Playing",
+        "overlay.stop": "Stop",
+        "overlay.countdown": "Starting in {sec}s\u2026",
+        "overlay.current": "Now",
+        "overlay.upcoming": "Next",
     },
     "zh": {
         # ── common ──
@@ -236,6 +269,32 @@ _T: dict[str, dict[str, str]] = {
         "convert.tip_note_mode": "tap = 短按 / hold = 长按",
         "convert.tip_snap": "开启后，升降号自动吸附到最近的可用音",
         "convert.tip_strict": "开启后，遇到无法映射的音符会中止转换",
+        "convert.preview_midi": "生成预览 MIDI（可试听转换结果）",
+        "convert.listen": "试听",
+        "convert.preview_midi_saved": "预览 MIDI 已保存：{path}",
+        "convert.preview_midi_err": "预览 MIDI 错误：{err}",
+
+        # ── AI 编曲 ──
+        "convert.ai_group": "AI 智能编曲",
+        "convert.ai_key": "API Key：",
+        "convert.ai_url": "Base URL：",
+        "convert.ai_model": "模型：",
+        "convert.ai_mode": "模式：",
+        "convert.ai_mode_remap": "音符重映射（快速）",
+        "convert.ai_mode_context": "上下文编曲（智能）",
+        "convert.ai_mode_tip": "重映射：同一音符始终映射到相同替代音。\n上下文：AI 分析旋律上下文，同一音符在不同位置可映射到不同替代音。",
+        "convert.ai_arrange": "AI 编曲",
+        "convert.ai_url_placeholder": "（可选）自定义 OpenAI 兼容接口地址",
+        "convert.ai_tip": "使用 AI 智能将超出乐器音域的音符重新编排",
+        "convert.ai_err_key": "错误：AI 编曲需要 API Key",
+        "convert.ai_working": "AI 正在分析音符，请稍候…",
+        "convert.ai_working_time": "AI 正在分析音符… 已用时 {sec}s",
+        "convert.ai_done": "AI 重映射完成：已重映射 {mapped} 个音符（共 {unmapped} 个未映射）",
+        "convert.ai_done_context": "AI 上下文编曲完成：已重映射 {mapped} 个位置（共 {unmapped} 个未映射音符）",
+        "convert.ai_err": "AI 错误：{err}",
+        "convert.ai_applied": "AI 已重映射 {count} 个音符",
+        "convert.ai_applied_context": "AI 上下文已重映射 {count} 个位置",
+        "convert.ai_copy": "复制",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI：",
@@ -306,6 +365,13 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_countdown": "按下开始后的倒计时，用于切换到游戏窗口",
         "play.tip_stagger": "同时按下多个键时的间隔，避免游戏漏键",
         "play.tip_dry_run": "模拟演奏，不实际发送按键，用于调试",
+
+        # ── 浮窗 ──
+        "overlay.playing": "演奏中",
+        "overlay.stop": "停止",
+        "overlay.countdown": "倒计时 {sec}s\u2026",
+        "overlay.current": "当前",
+        "overlay.upcoming": "准备",
     },
 }
 

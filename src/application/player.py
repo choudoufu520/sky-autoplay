@@ -9,6 +9,11 @@ from src.domain.chart import ChartDocument, ChartEvent
 from src.infrastructure.input_backends import BaseInputBackend, DryRunInputBackend
 
 LogCallback = Callable[[str], None]
+ProgressCallback = Callable[[int, int, int, int], None]
+CountdownCallback = Callable[[int], None]
+KeyDisplayCallback = Callable[[list[str], list[tuple[int, str]]], None]
+
+LOOKAHEAD_MS = 3000
 
 
 @dataclass(slots=True)
@@ -26,6 +31,9 @@ def play_chart(
     options: PlayOptions,
     stop_event: threading.Event | None = None,
     log: LogCallback | None = None,
+    progress: ProgressCallback | None = None,
+    countdown: CountdownCallback | None = None,
+    key_display: KeyDisplayCallback | None = None,
 ) -> None:
     def _log(msg: str) -> None:
         if log:
@@ -38,7 +46,6 @@ def play_chart(
 
     if options.dry_run:
         _print_dry_run(chart, log=_log)
-        return
 
     if backend is None:
         backend = DryRunInputBackend()
@@ -48,6 +55,8 @@ def play_chart(
             if _stopped():
                 _log("[stopped] cancelled during countdown")
                 return
+            if countdown:
+                countdown(remain)
             _log(f"[countdown] {remain}...")
             time.sleep(1)
 
@@ -55,7 +64,10 @@ def play_chart(
     pressed_keys: set[str] = set()
 
     grouped = _group_by_time(chart.events)
-    for time_ms, events in grouped:
+    total_groups = len(grouped)
+    total_ms = grouped[-1][0] if grouped else 0
+
+    for gi, (time_ms, events) in enumerate(grouped):
         if _stopped():
             break
         target_ms = time_ms + options.latency_offset_ms
@@ -69,6 +81,23 @@ def play_chart(
             if options.chord_stagger_ms > 0 and idx > 0:
                 time.sleep(options.chord_stagger_ms / 1000)
             _dispatch_event(event, backend, pressed_keys, options.debug, _log)
+
+        if progress:
+            elapsed = int((time.perf_counter() - start) * 1000)
+            progress(gi + 1, total_groups, elapsed, total_ms)
+
+        if key_display:
+            current_keys = [e.key for e in events if e.action in ("tap", "down")]
+            upcoming: list[tuple[int, str]] = []
+            for fgi in range(gi + 1, len(grouped)):
+                ft, fevts = grouped[fgi]
+                offset = ft - time_ms
+                if offset > LOOKAHEAD_MS:
+                    break
+                for fe in fevts:
+                    if fe.action in ("tap", "down"):
+                        upcoming.append((offset, fe.key))
+            key_display(current_keys, upcoming)
 
     for key in list(pressed_keys):
         backend.key_up(key)

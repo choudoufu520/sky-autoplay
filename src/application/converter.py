@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.domain.chart import ChartDocument, ChartEvent, ChartMetadata
@@ -21,6 +21,8 @@ class ConvertOptions:
     snap: bool = False
     note_mode: str = "tap"  # tap|hold
     single_track: int | None = None
+    ai_note_map: dict[int, int] | None = None
+    ai_position_map: dict[tuple[int, int], int] = field(default_factory=dict)
 
 
 def _resolve_profile_for_event(
@@ -45,10 +47,15 @@ def _lookup_key(
     transpose: int,
     octave: int,
     snap: bool = False,
+    ai_note_map: dict[int, int] | None = None,
+    ai_position_map: dict[tuple[int, int], int] | None = None,
+    time_ms: int = 0,
 ) -> tuple[str | None, str | None]:
     """Return (mapped_key, snap_info). snap_info is None when exact match.
 
-    Fallback order (when snap=True):
+    Fallback order:
+      0a. AI position map — context-aware per-position replacement
+      0b. AI note map — global 1:1 replacement
       1. Snap within max distance (handles sharps/flats already in range)
       2. Octave fold → exact (handles out-of-range natural notes)
       3. Octave fold → snap within max distance (handles out-of-range sharps/flats)
@@ -63,6 +70,20 @@ def _lookup_key(
     exact = _exact_lookup(profile.note_to_key, final_note)
     if exact is not None:
         return exact, None
+
+    if ai_position_map:
+        pos_key = (time_ms, final_note)
+        if pos_key in ai_position_map:
+            replacement = ai_position_map[pos_key]
+            key = _exact_lookup(profile.note_to_key, replacement)
+            if key is not None:
+                return key, f"ai-ctx: {final_note}->{replacement}"
+
+    if ai_note_map and final_note in ai_note_map:
+        replacement = ai_note_map[final_note]
+        key = _exact_lookup(profile.note_to_key, replacement)
+        if key is not None:
+            return key, f"ai: {final_note}->{replacement}"
 
     if not snap:
         return None, None
@@ -191,7 +212,10 @@ def convert_midi_to_chart(
     for event in raw_events:
         profile_id = _resolve_profile_for_event(mapping, options.profile, event.program)
         mapped_key, snap_info = _lookup_key(
-            mapping, profile_id, event.note, options.transpose, options.octave, snap=options.snap
+            mapping, profile_id, event.note, options.transpose, options.octave,
+            snap=options.snap, ai_note_map=options.ai_note_map,
+            ai_position_map=options.ai_position_map or None,
+            time_ms=event.time_ms,
         )
 
         if mapped_key is None:
@@ -246,3 +270,71 @@ def _append_hold_event(
             mapping_profile=profile_id,
         )
     )
+
+
+# ── Preview MIDI generation ────────────────────────────────
+
+
+def chart_to_preview_midi(
+    chart: ChartDocument,
+    mapping: MappingConfig,
+    output_path: Path,
+) -> None:
+    """Reverse-map chart key events back to MIDI notes and write a playable
+    MIDI file so the user can audition the conversion result."""
+    from mido import Message as Msg
+    from mido import MetaMessage as MM
+    from mido import MidiFile as MF
+    from mido import MidiTrack as MT
+
+    reverse: dict[str, dict[str, int]] = {}
+    for pid, profile in mapping.profiles.items():
+        key_to_note: dict[str, int] = {}
+        for note_str, key in profile.note_to_key.items():
+            try:
+                num = int(note_str)
+            except ValueError:
+                parsed = _note_name_to_midi_number(note_str)
+                if parsed is None:
+                    continue
+                num = parsed
+            key_to_note.setdefault(key, num)
+        reverse[pid] = key_to_note
+
+    tpb = 480
+    tempo = 500_000  # 120 BPM
+
+    def _ms2tick(ms: int) -> int:
+        return round(ms * tpb * 1000 / tempo)
+
+    raw: list[tuple[int, int, int, int]] = []
+    for ev in chart.events:
+        pid = ev.mapping_profile or mapping.default_profile
+        note = reverse.get(pid, {}).get(ev.key)
+        if note is None:
+            continue
+        if ev.action == "tap":
+            dur = ev.duration_ms or 30
+            raw.append((_ms2tick(ev.time_ms), 1, note, 80))
+            raw.append((_ms2tick(ev.time_ms + dur), 0, note, 0))
+        elif ev.action == "down":
+            raw.append((_ms2tick(ev.time_ms), 1, note, 80))
+        elif ev.action == "up":
+            raw.append((_ms2tick(ev.time_ms), 0, note, 0))
+
+    raw.sort(key=lambda x: (x[0], x[1]))
+
+    mid = MF(type=0, ticks_per_beat=tpb)
+    track = MT()
+    mid.tracks.append(track)
+    track.append(MM("set_tempo", tempo=tempo, time=0))
+
+    last_tick = 0
+    for tick, is_on, note, vel in raw:
+        delta = max(tick - last_tick, 0)
+        msg_type = "note_on" if is_on else "note_off"
+        track.append(Msg(msg_type, note=note, velocity=vel, time=delta))
+        last_tick = tick
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    mid.save(str(output_path))

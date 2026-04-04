@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from PySide6.QtWidgets import (
@@ -20,13 +21,18 @@ from src.application.player import PlayOptions
 from src.infrastructure.input_backends import DryRunInputBackend, PynputInputBackend
 from src.infrastructure.repository import load_chart
 from src.interfaces.gui.i18n import on_language_changed, tr
+from src.interfaces.gui.play_overlay import PlayOverlay
 from src.interfaces.gui.workers.play_worker import PlayWorker
+
+_log = logging.getLogger(__name__)
 
 
 class PlayTab(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self._worker: PlayWorker | None = None
+        self._overlay: PlayOverlay | None = None
+        self._hotkey_listener = None
         layout = QVBoxLayout(self)
 
         chart_row = QHBoxLayout()
@@ -146,9 +152,15 @@ class PlayTab(QWidget):
         self.play_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
+        self._show_overlay()
+        self._start_hotkey_listener()
+
         self._worker = PlayWorker(chart, backend, options)
         self._worker.log_message.connect(self._on_log)
         self._worker.finished_signal.connect(self._on_finished)
+        self._worker.progress_signal.connect(self._on_progress)
+        self._worker.countdown_signal.connect(self._on_countdown)
+        self._worker.key_display_signal.connect(self._on_key_display)
         self._worker.start()
 
     def _stop_play(self) -> None:
@@ -158,8 +170,60 @@ class PlayTab(QWidget):
     def _on_log(self, msg: str) -> None:
         self.log_text.appendPlainText(msg)
 
+    def _on_progress(self, current: int, total: int, elapsed_ms: int, total_ms: int) -> None:
+        if self._overlay:
+            self._overlay.update_progress(current, total, elapsed_ms, total_ms)
+
+    def _on_countdown(self, remain: int) -> None:
+        if self._overlay:
+            self._overlay.set_countdown(remain)
+
+    def _on_key_display(self, data: object) -> None:
+        if self._overlay and isinstance(data, tuple) and len(data) == 2:
+            current_keys, upcoming = data
+            self._overlay.update_keys(current_keys, upcoming)
+
     def _on_finished(self, success: bool, msg: str) -> None:
         self.log_text.appendPlainText(f"--- {msg} ---")
         self.play_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
+        self._hide_overlay()
+        self._stop_hotkey_listener()
         self._worker = None
+
+    # ── overlay ─────────────────────────────────────────────
+
+    def _show_overlay(self) -> None:
+        if self._overlay is None:
+            self._overlay = PlayOverlay()
+        self._overlay.set_countdown(0)
+        self._overlay.show()
+
+    def _hide_overlay(self) -> None:
+        if self._overlay is not None:
+            self._overlay.hide()
+
+    # ── global hotkey ───────────────────────────────────────
+
+    def _start_hotkey_listener(self) -> None:
+        try:
+            from pynput import keyboard
+        except ImportError:
+            _log.warning("pynput not available, global stop hotkey disabled")
+            return
+
+        def on_press(key: keyboard.Key | keyboard.KeyCode | None) -> None:
+            try:
+                if key == keyboard.Key.f9 and self._worker:
+                    self._worker.request_stop()
+            except Exception:
+                pass
+
+        self._hotkey_listener = keyboard.Listener(on_press=on_press)
+        self._hotkey_listener.daemon = True
+        self._hotkey_listener.start()
+
+    def _stop_hotkey_listener(self) -> None:
+        if self._hotkey_listener is not None:
+            self._hotkey_listener.stop()
+            self._hotkey_listener = None

@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSettings, QTimer, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
     QFileDialog,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -18,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.application.converter import ConvertOptions, MappingError, convert_midi_to_chart
+from src.application.converter import ConvertOptions, MappingError, chart_to_preview_midi, convert_midi_to_chart
 from src.infrastructure.midi_reader import MidiKeyAnalysis, analyze_midi_key, list_midi_tracks
 from src.infrastructure.repository import load_mapping, save_chart
 from src.interfaces.gui.paths import default_mapping_path
@@ -110,12 +111,86 @@ class ConvertTab(QWidget):
         self.strict_check = QCheckBox()
         self.form.addRow(self.strict_check)
 
+        self.preview_midi_check = QCheckBox()
+        self.form.addRow(self.preview_midi_check)
+
         layout.addLayout(self.form)
 
+        # AI Arrange section
+        self.ai_group = QGroupBox()
+        ai_layout = QVBoxLayout(self.ai_group)
+
+        self._settings = QSettings("SkyMusicAutomation", "SkyMusicAutomation")
+
+        ai_row1 = QHBoxLayout()
+        self.ai_key_label = QLabel("API Key:")
+        ai_row1.addWidget(self.ai_key_label)
+        self.ai_key_edit = QLineEdit()
+        self.ai_key_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.ai_key_edit.setPlaceholderText("sk-...")
+        self.ai_key_edit.setText(self._settings.value("ai/api_key", ""))
+        self.ai_key_edit.textChanged.connect(lambda v: self._settings.setValue("ai/api_key", v))
+        ai_row1.addWidget(self.ai_key_edit, 1)
+        ai_layout.addLayout(ai_row1)
+
+        ai_row2 = QHBoxLayout()
+        self.ai_url_label = QLabel("Base URL:")
+        ai_row2.addWidget(self.ai_url_label)
+        self.ai_url_edit = QLineEdit()
+        self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
+        self.ai_url_edit.setText(self._settings.value("ai/base_url", ""))
+        self.ai_url_edit.textChanged.connect(lambda v: self._settings.setValue("ai/base_url", v))
+        ai_row2.addWidget(self.ai_url_edit, 1)
+        ai_layout.addLayout(ai_row2)
+
+        ai_row3 = QHBoxLayout()
+        self.ai_model_label = QLabel("Model:")
+        ai_row3.addWidget(self.ai_model_label)
+        self.ai_model_edit = QLineEdit(self._settings.value("ai/model", "gpt-4o-mini"))
+        self.ai_model_edit.textChanged.connect(lambda v: self._settings.setValue("ai/model", v))
+        ai_row3.addWidget(self.ai_model_edit, 1)
+        ai_layout.addLayout(ai_row3)
+
+        ai_row4 = QHBoxLayout()
+        self.ai_mode_label = QLabel()
+        ai_row4.addWidget(self.ai_mode_label)
+        self.ai_mode_combo = QComboBox()
+        self.ai_mode_combo.addItem(tr("convert.ai_mode_remap"), userData="remap")
+        self.ai_mode_combo.addItem(tr("convert.ai_mode_context"), userData="context")
+        ai_row4.addWidget(self.ai_mode_combo, 1)
+        self.ai_arrange_btn = QPushButton()
+        self.ai_arrange_btn.clicked.connect(self._ai_arrange)
+        ai_row4.addWidget(self.ai_arrange_btn)
+        ai_layout.addLayout(ai_row4)
+
+        ai_status_row = QHBoxLayout()
+        self.ai_status_label = QLabel()
+        self.ai_status_label.setWordWrap(True)
+        self.ai_status_label.setTextInteractionFlags(
+            self.ai_status_label.textInteractionFlags()
+            | self.ai_status_label.textInteractionFlags().TextSelectableByMouse
+        )
+        ai_status_row.addWidget(self.ai_status_label, 1)
+        self.ai_copy_btn = QPushButton()
+        self.ai_copy_btn.setFixedWidth(60)
+        self.ai_copy_btn.setVisible(False)
+        self.ai_copy_btn.clicked.connect(self._copy_ai_status)
+        ai_status_row.addWidget(self.ai_copy_btn)
+        ai_layout.addLayout(ai_status_row)
+
+        layout.addWidget(self.ai_group)
+
+        convert_row = QHBoxLayout()
         self.convert_btn = QPushButton()
         self.convert_btn.setObjectName("primaryBtn")
         self.convert_btn.clicked.connect(self._convert)
-        layout.addWidget(self.convert_btn)
+        convert_row.addWidget(self.convert_btn)
+
+        self.listen_btn = QPushButton()
+        self.listen_btn.setEnabled(False)
+        self.listen_btn.clicked.connect(self._listen_preview)
+        convert_row.addWidget(self.listen_btn)
+        layout.addLayout(convert_row)
 
         self.result_text = QPlainTextEdit()
         self.result_text.setReadOnly(True)
@@ -124,6 +199,15 @@ class ConvertTab(QWidget):
 
         self._suggested_transpose: int = 0
         self._midi_path: str = ""
+        self._ai_note_map: dict[int, int] | None = None
+        self._ai_position_map: dict[tuple[int, int], int] | None = None
+        self._ai_worker = None
+        self._preview_midi_path: str | None = None
+
+        self._ai_timer = QTimer(self)
+        self._ai_timer.setInterval(1000)
+        self._ai_timer.timeout.connect(self._tick_ai_timer)
+        self._ai_elapsed = 0
 
         self.single_track_combo.currentIndexChanged.connect(self._on_track_changed)
         self.mapping_edit.textChanged.connect(self._refresh_profiles)
@@ -156,13 +240,28 @@ class ConvertTab(QWidget):
             self.single_track_combo.setItemText(0, tr("convert.all"))
         self.snap_check.setText(tr("convert.snap"))
         self.strict_check.setText(tr("convert.strict"))
+        self.preview_midi_check.setText(tr("convert.preview_midi"))
         self.convert_btn.setText(tr("convert.btn"))
+        self.listen_btn.setText(tr("convert.listen"))
 
         self.transpose_spin.setToolTip(tr("convert.tip_transpose"))
         self.octave_spin.setToolTip(tr("convert.tip_octave"))
         self.note_mode_combo.setToolTip(tr("convert.tip_note_mode"))
         self.snap_check.setToolTip(tr("convert.tip_snap"))
         self.strict_check.setToolTip(tr("convert.tip_strict"))
+
+        self.ai_group.setTitle(tr("convert.ai_group"))
+        self.ai_key_label.setText(tr("convert.ai_key"))
+        self.ai_url_label.setText(tr("convert.ai_url"))
+        self.ai_model_label.setText(tr("convert.ai_model"))
+        self.ai_mode_label.setText(tr("convert.ai_mode"))
+        self.ai_mode_combo.setItemText(0, tr("convert.ai_mode_remap"))
+        self.ai_mode_combo.setItemText(1, tr("convert.ai_mode_context"))
+        self.ai_mode_combo.setToolTip(tr("convert.ai_mode_tip"))
+        self.ai_arrange_btn.setText(tr("convert.ai_arrange"))
+        self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
+        self.ai_arrange_btn.setToolTip(tr("convert.ai_tip"))
+        self.ai_copy_btn.setText(tr("convert.ai_copy"))
 
     def set_midi_path(self, path: str) -> None:
         self._midi_path = path
@@ -245,6 +344,121 @@ class ConvertTab(QWidget):
         except Exception:
             pass
 
+    def _ai_arrange(self) -> None:
+        from src.interfaces.gui.workers.ai_worker import AiArrangeWorker
+
+        midi_path = self._midi_path or self.midi_edit.text().strip()
+        mapping_path = self.mapping_edit.text().strip()
+        api_key = self.ai_key_edit.text().strip()
+
+        if not midi_path or not mapping_path:
+            self.ai_status_label.setText(tr("convert.err_required"))
+            return
+        if not api_key:
+            self.ai_status_label.setText(tr("convert.ai_err_key"))
+            return
+
+        try:
+            mapping_config = load_mapping(Path(mapping_path))
+        except Exception as exc:
+            self.ai_status_label.setText(tr("convert.err_mapping").format(err=exc))
+            return
+
+        profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
+        single_track_val = self.single_track_combo.currentData()
+        base_url = self.ai_url_edit.text().strip() or None
+        model = self.ai_model_edit.text().strip() or "gpt-4o-mini"
+
+        mode = self.ai_mode_combo.currentData() or "remap"
+
+        self.ai_arrange_btn.setEnabled(False)
+        self._ai_elapsed = 0
+        self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
+        self._ai_timer.start()
+
+        self._ai_worker = AiArrangeWorker(
+            midi_path=Path(midi_path),
+            mapping=mapping_config,
+            profile_id=profile,
+            api_key=api_key,
+            transpose=self.transpose_spin.value(),
+            octave=self.octave_spin.value(),
+            single_track=single_track_val,
+            base_url=base_url,
+            model=model,
+            mode=mode,
+            parent=self,
+        )
+        self._ai_worker.finished.connect(self._on_ai_finished)
+        self._ai_worker.error.connect(self._on_ai_error)
+        self._ai_worker.chunk_received.connect(self._on_ai_chunk)
+        self.result_text.clear()
+        self._ai_worker.start()
+
+    def _on_ai_finished(self, result: object) -> None:
+        from src.application.ai_arranger import AiArrangeResult
+
+        self._ai_timer.stop()
+        self.ai_arrange_btn.setEnabled(True)
+        self.ai_copy_btn.setVisible(False)
+        if not isinstance(result, AiArrangeResult):
+            return
+
+        self._ai_note_map = None
+        self._ai_position_map = None
+
+        elapsed = self._ai_elapsed
+
+        if result.mode == "context" and result.position_map:
+            pos_dict: dict[tuple[int, int], int] = {}
+            for pr in result.position_map:
+                pos_dict[(pr.time_ms, pr.original)] = pr.replacement
+            self._ai_position_map = pos_dict
+            count = len(result.position_map)
+            self.ai_status_label.setText(
+                tr("convert.ai_done_context").format(mapped=count, unmapped=result.unmapped_count)
+                + f"  ({elapsed}s)"
+            )
+        else:
+            self._ai_note_map = result.note_map if result.note_map else None
+            count = len(result.note_map) if result.note_map else 0
+            self.ai_status_label.setText(
+                tr("convert.ai_done").format(mapped=count, unmapped=result.unmapped_count)
+                + f"  ({elapsed}s)"
+            )
+
+    def _on_ai_chunk(self, accumulated: str) -> None:
+        self.result_text.setPlainText(accumulated)
+        scrollbar = self.result_text.verticalScrollBar()
+        if scrollbar:
+            scrollbar.setValue(scrollbar.maximum())
+
+    def _tick_ai_timer(self) -> None:
+        self._ai_elapsed += 1
+        self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=self._ai_elapsed))
+
+    def _on_ai_error(self, msg: str) -> None:
+        self._ai_timer.stop()
+        elapsed = self._ai_elapsed
+        self.ai_arrange_btn.setEnabled(True)
+        self._ai_note_map = None
+        self._ai_position_map = None
+        self.ai_status_label.setText(tr("convert.ai_err").format(err=msg) + f"  ({elapsed}s)")
+        self.ai_copy_btn.setVisible(True)
+
+    def _copy_ai_status(self) -> None:
+        from PySide6.QtWidgets import QApplication
+
+        clipboard = QApplication.clipboard()
+        if clipboard:
+            clipboard.setText(self.ai_status_label.text())
+
+    def _listen_preview(self) -> None:
+        import os
+
+        if self._preview_midi_path and Path(self._preview_midi_path).exists():
+            os.startfile(self._preview_midi_path)  # type: ignore[attr-defined]
+
     def _convert(self) -> None:
         self.result_text.clear()
         midi_path = self.midi_edit.text().strip()
@@ -272,6 +486,8 @@ class ConvertTab(QWidget):
             snap=self.snap_check.isChecked(),
             note_mode=self.note_mode_combo.currentText(),
             single_track=single_track_val,
+            ai_note_map=self._ai_note_map,
+            ai_position_map=self._ai_position_map or {},
         )
 
         try:
@@ -289,6 +505,23 @@ class ConvertTab(QWidget):
             tr("convert.saved").format(path=output_path),
             tr("convert.events").format(count=len(chart.events)),
         ]
+        if self._ai_position_map:
+            lines.append(tr("convert.ai_applied_context").format(count=len(self._ai_position_map)))
+        elif self._ai_note_map:
+            lines.append(tr("convert.ai_applied").format(count=len(self._ai_note_map)))
+
+        self._preview_midi_path = None
+        self.listen_btn.setEnabled(False)
+        if self.preview_midi_check.isChecked():
+            preview_path = Path(output_path).with_suffix(".preview.mid")
+            try:
+                chart_to_preview_midi(chart, mapping_config, preview_path)
+                self._preview_midi_path = str(preview_path)
+                self.listen_btn.setEnabled(True)
+                lines.append(tr("convert.preview_midi_saved").format(path=preview_path))
+            except Exception as exc:
+                lines.append(tr("convert.preview_midi_err").format(err=exc))
+
         if warnings:
             lines.append(tr("convert.warnings").format(count=len(warnings)))
             for w in warnings[:30]:
