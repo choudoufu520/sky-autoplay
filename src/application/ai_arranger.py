@@ -118,6 +118,10 @@ def parse_remap_response(response: str) -> dict[int, int]:
     match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
     if match:
         text = match.group(0)
+    else:
+        idx = text.find("{")
+        if idx >= 0:
+            text = text[idx:]
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -164,6 +168,10 @@ def parse_context_response(response: str) -> list[PositionRemap]:
     match = re.search(r"\[.*\]", text, re.DOTALL)
     if match:
         text = match.group(0)
+    else:
+        idx = text.find("[")
+        if idx >= 0:
+            text = text[idx:]
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
@@ -200,52 +208,63 @@ def _extract_clean_text(response: str) -> str:
 
 
 def _repair_truncated_json(text: str) -> str:
-    """Attempt to repair JSON truncated mid-stream by closing open brackets."""
+    """Repair JSON truncated mid-stream by finding the last parseable cut point."""
     text = text.rstrip()
-    text = re.sub(r",\s*$", "", text)
+    stripped = text.lstrip()
 
-    stack: list[str] = []
-    in_string = False
-    escape = False
-    for ch in text:
-        if escape:
-            escape = False
-            continue
-        if ch == "\\":
-            escape = True
-            continue
-        if ch == '"':
-            in_string = not in_string
-            continue
-        if in_string:
-            continue
-        if ch in ("{", "["):
-            stack.append(ch)
-        elif ch == "}" and stack and stack[-1] == "{":
-            stack.pop()
-        elif ch == "]" and stack and stack[-1] == "[":
-            stack.pop()
+    if stripped.startswith("["):
+        repaired = _repair_json_array(text)
+        if repaired is not None:
+            return repaired
 
-    last_complete = text
-    if stack:
-        top = stack[-1]
-        if top == "[":
-            last_obj = text.rfind("}")
-            last_bracket = text.rfind("]")
-            cut = max(last_obj, last_bracket)
-            if cut > 0:
-                last_complete = text[: cut + 1]
-        elif top == "{":
-            last_val_end = max(text.rfind('"'), text.rfind("}"), text.rfind("]"))
-            for i in range(last_val_end, -1, -1):
-                if text[i] in ('"', "}", "]") or text[i].isdigit():
-                    last_complete = text[: i + 1]
-                    break
+    if stripped.startswith("{"):
+        repaired = _repair_json_object(text)
+        if repaired is not None:
+            return repaired
 
-    for closer in reversed(stack):
-        last_complete += "]" if closer == "[" else "}"
+    return text
 
-    return last_complete
+
+def _repair_json_array(text: str) -> str | None:
+    """Find the last complete element in a truncated JSON array."""
+    pos = len(text)
+    for _ in range(30):
+        pos = text.rfind("}", 0, pos)
+        if pos < 0:
+            break
+        candidate = text[: pos + 1].rstrip()
+        candidate = re.sub(r",\s*$", "", candidate)
+        candidate += "]"
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            continue
+    return None
+
+
+def _repair_json_object(text: str) -> str | None:
+    """Find the last complete key-value pair in a truncated JSON object."""
+    search_chars = ('"', "}", "]")
+    pos = len(text)
+    for _ in range(30):
+        best = -1
+        for ch in search_chars:
+            p = text.rfind(ch, 0, pos)
+            if p > best:
+                best = p
+        if best < 0:
+            break
+        pos = best
+        candidate = text[: pos + 1].rstrip()
+        candidate = re.sub(r",\s*$", "", candidate)
+        candidate += "}"
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            continue
+    return None
 
 
 def _normalize_base_url(url: str) -> str:
@@ -273,7 +292,7 @@ def call_openai(
     client = OpenAI(
         api_key=api_key,
         base_url=normalized_url,
-        http_client=httpx.Client(timeout=httpx.Timeout(300, connect=30)),
+        http_client=httpx.Client(timeout=httpx.Timeout(3000, connect=30)),
     )
     stream = client.chat.completions.create(
         model=model,
@@ -339,7 +358,10 @@ def ai_arrange(
 
     if mode == "context":
         prompt = build_context_prompt(available, raw_events, shift, available_set)
-        raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
+        raw = call_openai(
+            api_key, prompt, base_url=base_url, model=model,
+            on_chunk=on_chunk, max_tokens=65536,
+        )
         position_map = parse_context_response(raw)
         return AiArrangeResult(
             position_map=position_map,

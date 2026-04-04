@@ -189,6 +189,25 @@ _T: dict[str, dict[str, str]] = {
         "overlay.countdown": "Starting in {sec}s\u2026",
         "overlay.current": "Now",
         "overlay.upcoming": "Next",
+
+        # ── Update ──
+        "menu.help": "Help",
+        "update.check": "Check for Updates",
+        "update.about": "About",
+        "update.checking": "Checking for updates...",
+        "update.available": "Update Available",
+        "update.new_version": "New version {version} is available (current: {current}).",
+        "update.release_notes": "Release Notes:",
+        "update.download": "Download && Update",
+        "update.open_release": "Open Release Page",
+        "update.skip": "Skip",
+        "update.no_update": "You are already on the latest version ({version}).",
+        "update.check_error": "Failed to check for updates: {err}",
+        "update.downloading": "Downloading update... {percent}%",
+        "update.download_done": "Download complete. Restarting to apply update...",
+        "update.download_error": "Download failed: {err}",
+        "update.source_hint": "Auto-update is only available for packaged builds.\nPlease use git pull to update.",
+        "update.about_text": "Sky Music Automation v{version}\n\nPC Sky auto-play tool.\nhttps://github.com/choudoufu520/sky-autoplay",
     },
     "zh": {
         # ── common ──
@@ -372,6 +391,25 @@ _T: dict[str, dict[str, str]] = {
         "overlay.countdown": "倒计时 {sec}s\u2026",
         "overlay.current": "当前",
         "overlay.upcoming": "准备",
+
+        # ── 更新 ──
+        "menu.help": "帮助",
+        "update.check": "检查更新",
+        "update.about": "关于",
+        "update.checking": "正在检查更新…",
+        "update.available": "发现新版本",
+        "update.new_version": "新版本 {version} 已发布（当前版本：{current}）。",
+        "update.release_notes": "更新日志：",
+        "update.download": "下载并更新",
+        "update.open_release": "打开发布页面",
+        "update.skip": "跳过",
+        "update.no_update": "当前已是最新版本（{version}）。",
+        "update.check_error": "检查更新失败：{err}",
+        "update.downloading": "正在下载更新… {percent}%",
+        "update.download_done": "下载完成，正在重启以应用更新…",
+        "update.download_error": "下载失败：{err}",
+        "update.source_hint": "自动更新仅支持打包版本。\n请使用 git pull 更新源码。",
+        "update.about_text": "光遇自动演奏工具 v{version}\n\nPC《光·遇》自动演奏工具。\nhttps://github.com/choudoufu520/sky-autoplay",
     },
 }
 
