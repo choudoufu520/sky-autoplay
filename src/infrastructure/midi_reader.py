@@ -183,6 +183,43 @@ def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKe
     return result
 
 
+@dataclass(slots=True)
+class MidiMeta:
+    bpm: float = 120.0
+    time_signature: str = "4/4"
+    key_signature: str = ""
+    total_notes: int = 0
+    duration_sec: float = 0.0
+
+
+def read_midi_meta(midi_path: Path, single_track: int | None = None) -> MidiMeta:
+    midi = MidiFile(str(midi_path))
+    ppq = midi.ticks_per_beat
+    meta = MidiMeta()
+
+    stream = _build_track_stream(midi, single_track)
+    tempo = 500000
+    current_tick = 0
+    total_sec = 0.0
+
+    for msg in stream:
+        if msg.time:
+            total_sec += tick2second(msg.time, ppq, tempo)
+            current_tick += msg.time
+        if msg.type == "set_tempo":
+            tempo = msg.tempo
+        elif msg.type == "time_signature":
+            meta.time_signature = f"{msg.numerator}/{msg.denominator}"
+        elif msg.type == "key_signature":
+            meta.key_signature = msg.key
+        elif msg.type == "note_on" and msg.velocity > 0:
+            meta.total_notes += 1
+
+    meta.bpm = round(60_000_000 / tempo, 1)
+    meta.duration_sec = round(total_sec, 1)
+    return meta
+
+
 def export_single_track_midi(
     midi_path: Path,
     track_index: int,

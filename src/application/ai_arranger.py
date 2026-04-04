@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.domain.mapping import MappingConfig
-from src.infrastructure.midi_reader import RawMidiEvent, read_midi_events
+from src.infrastructure.midi_reader import MidiMeta, RawMidiEvent, read_midi_events, read_midi_meta
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -87,6 +87,23 @@ def analyze_unmapped_notes(
 # ── Remap mode ──────────────────────────────────────────────
 
 
+def _format_midi_meta(meta: MidiMeta, filename: str) -> str:
+    parts: list[str] = []
+    if filename:
+        parts.append(f"MIDI file: {filename}")
+    parts.append(f"BPM: {meta.bpm}, Time signature: {meta.time_signature}")
+    if meta.key_signature:
+        parts.append(f"Key signature (from MIDI): {meta.key_signature}")
+    parts.append(f"Total notes: {meta.total_notes}, Duration: {meta.duration_sec}s")
+    header = "\n".join(parts)
+    song_hint = (
+        "\nIf you can identify the song from the filename or musical features, "
+        "use your knowledge of the original piece to make better arrangement decisions."
+        if filename else ""
+    )
+    return f"\n{header}{song_hint}\n"
+
+
 _STYLE_INSTRUCTIONS = {
     "conservative": "",
     "balanced": """
@@ -110,6 +127,8 @@ def build_remap_prompt(
     unmapped: list[int],
     unmapped_counts: Counter[int],
     style: str = "conservative",
+    filename: str = "",
+    meta: MidiMeta | None = None,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
     unmapped_lines = []
@@ -124,7 +143,11 @@ def build_remap_prompt(
     if style in ("balanced", "creative"):
         drop_hint = '\nUse -1 as the value to drop a note: {{"61": 60, "73": -1}}'
 
-    return f"""You are a professional music arranger. An instrument only has these notes available:
+    meta_block = _format_midi_meta(meta, filename) if meta else ""
+
+    return f"""You are a professional music arranger.
+{meta_block}
+An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
 
@@ -138,10 +161,10 @@ For each unmapped note, suggest which available note should replace it. Follow t
 4. SHARPS/FLATS — for accidentals (e.g. C#, Eb), prefer the adjacent natural note that fits the musical context (usually the note a half-step away in the direction of the melody).
 5. MINIMIZE OCTAVE FOLDING — only fold into a different octave as a last resort, and prefer folding UP over DOWN to preserve brightness.
 {style_block}
-Your response MUST have exactly two sections with these headers:
+Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
 ## Analysis
-Briefly explain your arrangement strategy: which notes are out of range, how you plan to handle them, and your reasoning. Keep it concise (3-8 lines).
+简要说明你的编曲策略：哪些音超出范围、你打算如何处理、你的推理过程。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
 
 ## Mapping
 A JSON object mapping each unmapped MIDI number to its replacement, like:
@@ -176,6 +199,8 @@ def build_context_prompt(
     shift: int,
     available_set: set[int],
     style: str = "conservative",
+    filename: str = "",
+    meta: MidiMeta | None = None,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
@@ -193,7 +218,11 @@ def build_context_prompt(
     if style in ("balanced", "creative"):
         drop_hint = '\nUse -1 as replacement to drop a note: {{"time_ms": 500, "original": 73, "replacement": -1}}'
 
-    return f"""You are a professional music arranger. An instrument only has these notes available:
+    meta_block = _format_midi_meta(meta, filename) if meta else ""
+
+    return f"""You are a professional music arranger.
+{meta_block}
+An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
 
@@ -213,10 +242,10 @@ ARRANGEMENT PRINCIPLES (in priority order):
 Note sequence:
 {chr(10).join(note_lines)}
 
-Your response MUST have exactly two sections with these headers:
+Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
 ## Analysis
-Briefly explain your arrangement strategy: how many notes are unmapped, which pitch ranges are affected, and your overall approach. Keep it concise (3-8 lines).
+简要说明你的编曲策略：共有多少音符未映射、影响哪些音高范围、你的整体处理方案。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
 
 ## Mapping
 A JSON array of replacements for UNMAPPED notes, like:
@@ -393,7 +422,7 @@ def call_openai(
     max_tokens: int = 16384,
 ) -> str:
     import httpx
-    from openai import OpenAI
+    from openai import OpenAI, BadRequestError
 
     normalized_url = _normalize_base_url(base_url) if base_url else None
     client = OpenAI(
@@ -401,13 +430,20 @@ def call_openai(
         base_url=normalized_url,
         http_client=httpx.Client(timeout=httpx.Timeout(3000, connect=30)),
     )
-    stream = client.chat.completions.create(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=max_tokens,
-        stream=True,
-    )
+
+    create_kwargs: dict = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "max_tokens": max_tokens,
+        "stream": True,
+    }
+
+    try:
+        stream = client.chat.completions.create(**create_kwargs)
+    except BadRequestError:
+        create_kwargs.pop("max_tokens", None)
+        stream = client.chat.completions.create(**create_kwargs)
 
     chunks: list[str] = []
     for chunk in stream:
@@ -464,8 +500,11 @@ def ai_arrange(
             explanation="All notes are already mapped.",
         )
 
+    midi_filename = midi_path.stem
+    meta = read_midi_meta(midi_path, single_track=single_track)
+
     if mode == "context":
-        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style)
+        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta)
         raw = call_openai(
             api_key, prompt, base_url=base_url, model=model,
             on_chunk=on_chunk, max_tokens=65536,
@@ -482,7 +521,7 @@ def ai_arrange(
             total_notes=len(raw_events),
         )
 
-    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style)
+    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta)
     raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
     analysis_text, json_text = parse_analysis_and_json(raw)
     note_map = parse_remap_response(json_text) if json_text else {}
