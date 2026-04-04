@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip
-          pip install ".[input,gui]"
+          pip install ".[input,gui,ai]"
           pip install pyinstaller
 
       - name: Stamp version from tag
