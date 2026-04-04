@@ -88,11 +88,15 @@ _T: dict[str, dict[str, str]] = {
         "convert.tip_strict": "When enabled, conversion aborts on unmapped notes",
         "convert.preview_midi": "Generate preview MIDI (audition result)",
         "convert.listen": "Listen",
+        "convert.export_jianpu": "Export Jianpu",
         "convert.preview_midi_saved": "Preview MIDI saved: {path}",
         "convert.preview_midi_err": "Preview MIDI error: {err}",
+        "convert.jianpu_saved": "Jianpu saved: {path}",
+        "convert.dialog_jianpu": "Save Jianpu",
 
         # ── AI Arrange ──
         "convert.ai_group": "AI Intelligent Arrangement",
+        "convert.ai_hint": "Use AI to auto-optimize note mapping for Sky performance",
         "convert.ai_key": "API Key:",
         "convert.ai_url": "Base URL:",
         "convert.ai_model": "Model:",
@@ -105,6 +109,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_style_balanced": "Balanced",
         "convert.ai_style_creative": "Creative",
         "convert.ai_style_tip": "Conservative: every note must be replaced, strict fidelity.\nBalanced: may drop ornamental/passing tones and simplify chords.\nCreative: full artistic freedom, prioritizes musicality over fidelity.",
+        "convert.ai_simplify": "Simplify arrangement (reduce key presses)",
+        "convert.ai_simplify_tip": "Prioritize main melody, drop repetitive accompaniment and padding notes to make the piece easier to perform in-game",
         "convert.ai_arrange": "AI Arrange",
         "convert.ai_url_placeholder": "(optional) custom OpenAI-compatible endpoint",
         "convert.ai_tip": "Use AI to intelligently remap notes outside the instrument range",
@@ -135,6 +141,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_key_apply": "Apply",
         "convert.ai_key_optimal": "Current transpose/octave is already optimal",
         "convert.ai_edit_prompt": "Edit Prompts",
+        "convert.ai_settings": "API Settings",
+        "convert.ai_apply_convert": "Apply && Convert",
 
         # ── Prompt Editor ──
         "prompt.title": "AI Prompt Editor",
@@ -329,11 +337,15 @@ _T: dict[str, dict[str, str]] = {
         "convert.tip_strict": "开启后，遇到无法映射的音符会中止转换",
         "convert.preview_midi": "生成预览 MIDI（可试听转换结果）",
         "convert.listen": "试听",
+        "convert.export_jianpu": "导出简谱",
         "convert.preview_midi_saved": "预览 MIDI 已保存：{path}",
         "convert.preview_midi_err": "预览 MIDI 错误：{err}",
+        "convert.jianpu_saved": "简谱已保存：{path}",
+        "convert.dialog_jianpu": "保存简谱",
 
         # ── AI 编曲 ──
         "convert.ai_group": "AI 智能编曲",
+        "convert.ai_hint": "启用后由 AI 自动优化音符映射，适配光遇演奏",
         "convert.ai_key": "API Key：",
         "convert.ai_url": "Base URL：",
         "convert.ai_model": "模型：",
@@ -346,6 +358,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_style_balanced": "智能改编",
         "convert.ai_style_creative": "自由改编",
         "convert.ai_style_tip": "严格替换：每个音符都必须替换，忠于原曲。\n智能改编：允许丢弃装饰音/经过音，简化和弦。\n自由改编：完全自由创作，优先保证音乐性。",
+        "convert.ai_simplify": "精简编曲（减少按键数量）",
+        "convert.ai_simplify_tip": "保留主旋律，弱化重复伴奏与铺垫音，让演奏更轻松",
         "convert.ai_arrange": "AI 编曲",
         "convert.ai_url_placeholder": "（可选）自定义 OpenAI 兼容接口地址",
         "convert.ai_tip": "使用 AI 智能将超出乐器音域的音符重新编排",
@@ -376,6 +390,8 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_key_apply": "应用",
         "convert.ai_key_optimal": "当前移调/八度已是最优",
         "convert.ai_edit_prompt": "编辑提示词",
+        "convert.ai_settings": "API 设置",
+        "convert.ai_apply_convert": "应用并转换",
 
         # ── 提示词编辑器 ──
         "prompt.title": "AI 提示词编辑器",

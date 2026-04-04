@@ -22,6 +22,7 @@ input = [
 ]
 gui = [
   "PySide6>=6.7.0",
+  "fpdf2>=2.8.0",
 ]
 ai = [
   "openai>=1.30.0",

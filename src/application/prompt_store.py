@@ -36,7 +36,7 @@ Unmapped: 61(C#4), 63(D#4).  Available: [..., 60(C4), 62(D4), 64(E4), ...]
 GOOD: {{"61": 62, "63": 64}} — each gets a distinct nearby replacement, spacing preserved.
 BAD:  {{"61": 60, "63": 60}} — two different notes mapped to same replacement, destroys detail.
 BAD:  {{"61": 60, "63": 62}} — both shifted down, but 60 and 62 lose the half-step tension of 61 vs 63.
-{style_block}
+{style_block}{simplify_block}
 Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
 ## Analysis
@@ -90,7 +90,7 @@ Available: [60,62,64,65,67,69,71,72,74,76,77,79,81,83,84]
 GOOD: 67 -> 69 -> 74    (up 2, up 5 — direction and rough interval preserved)
 BAD:  67 -> 69 -> 64    (up 2, DOWN 5 — direction inverted, destroys melodic contour)
 BAD:  67 -> 69 -> 69    (up 2, +0   — consecutive duplicates, melody stalls)
-{style_block}
+{style_block}{simplify_block}
 
 Note sequence:
 {sequence_text}

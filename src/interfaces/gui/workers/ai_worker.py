@@ -34,6 +34,7 @@ class AiArrangeWorker(QThread):
         model: str = "gpt-4o-mini",
         mode: str = "remap",
         style: str = "conservative",
+        simplify: bool = False,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -48,6 +49,7 @@ class AiArrangeWorker(QThread):
         self.model = model
         self.mode = mode
         self.style = style
+        self.simplify = simplify
 
     def run(self) -> None:
         try:
@@ -63,6 +65,7 @@ class AiArrangeWorker(QThread):
                 model=self.model,
                 mode=self.mode,
                 style=self.style,
+                simplify=self.simplify,
                 on_chunk=self._on_chunk,
             )
             self.finished.emit(result)

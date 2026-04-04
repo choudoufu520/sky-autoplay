@@ -185,6 +185,8 @@ def _octave_fold(note: int, mapped_notes: list[int]) -> int:
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+_JIANPU_NOTE = {0: "1", 2: "2", 4: "3", 5: "4", 7: "5", 9: "6", 11: "7"}
+
 
 def _midi_number_to_note_name(note_number: int) -> str:
     octave = (note_number // 12) - 1
@@ -342,3 +344,426 @@ def chart_to_preview_midi(
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     mid.save(str(output_path))
+
+
+# ── Jianpu (numbered musical notation) export ──────────────
+
+
+def _midi_to_jianpu(note: int) -> str:
+    """Convert a MIDI note number to Jianpu notation with octave markers.
+
+    Reference octave is 4 (C4 = middle C = ``1`` with no marker).
+    Higher octaves append ``'``, lower octaves append ``,``.
+    """
+    pc = note % 12
+    octave = (note // 12) - 1
+
+    base = _JIANPU_NOTE.get(pc)
+    if base is None:
+        lower = (pc - 1) % 12
+        upper = (pc + 1) % 12
+        if lower in _JIANPU_NOTE:
+            base = f"#{_JIANPU_NOTE[lower]}"
+        elif upper in _JIANPU_NOTE:
+            base = f"b{_JIANPU_NOTE[upper]}"
+        else:
+            return "?"
+
+    diff = octave - 4
+    if diff > 0:
+        base += "'" * diff
+    elif diff < 0:
+        base += "," * (-diff)
+    return base
+
+
+def chart_to_jianpu(
+    chart: ChartDocument,
+    mapping: MappingConfig,
+    bpm: float = 120.0,
+    time_signature: str = "4/4",
+    title: str = "",
+) -> str:
+    """Convert a chart to text-based Jianpu (numbered musical notation).
+
+    The output uses quarter-note beat positions with sustain markers (``-``)
+    and rest markers (``0``), grouped into bars separated by ``|``.
+    """
+    reverse: dict[str, int] = {}
+    for _pid, profile in mapping.profiles.items():
+        for note_str, key in profile.note_to_key.items():
+            try:
+                num = int(note_str)
+            except ValueError:
+                parsed = _note_name_to_midi_number(note_str)
+                if parsed is None:
+                    continue
+                num = parsed
+            reverse.setdefault(key, num)
+
+    ts_parts = time_signature.split("/")
+    beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
+    beat_ms = 60000.0 / bpm
+
+    events = sorted(
+        (e for e in chart.events if e.action in ("tap", "down")),
+        key=lambda e: e.time_ms,
+    )
+    if not events:
+        return ""
+
+    grid_notes: dict[int, list[str]] = {}
+    grid_end_ms: dict[int, float] = {}
+
+    for ev in events:
+        midi_note = reverse.get(ev.key)
+        if midi_note is None:
+            continue
+        beat_idx = round(ev.time_ms / beat_ms)
+        grid_notes.setdefault(beat_idx, []).append(_midi_to_jianpu(midi_note))
+        end = ev.time_ms + (ev.duration_ms or 0)
+        if end > grid_end_ms.get(beat_idx, 0):
+            grid_end_ms[beat_idx] = end
+
+    if not grid_notes:
+        return ""
+
+    last_beat = max(grid_notes.keys())
+    total_beats = ((last_beat // beats_per_bar) + 1) * beats_per_bar
+
+    cells: list[str] = []
+    sustain_end = 0.0
+    for i in range(total_beats):
+        notes = grid_notes.get(i)
+        beat_start = i * beat_ms
+        if notes:
+            unique = list(dict.fromkeys(notes))
+            cells.append(
+                unique[0] if len(unique) == 1 else f"({' '.join(unique)})"
+            )
+            sustain_end = max(sustain_end, grid_end_ms.get(i, 0))
+        elif beat_start < sustain_end - beat_ms * 0.25:
+            cells.append("-")
+        else:
+            cells.append("0")
+
+    col_w = max((len(c) for c in cells), default=1) + 1
+    col_w = max(col_w, 3)
+
+    lines: list[str] = []
+    if title:
+        lines.append(title)
+    lines.append(f"1=C  {time_signature}  ♩={int(bpm)}")
+    lines.append("")
+
+    bar_strs: list[str] = []
+    for bar in range(0, total_beats, beats_per_bar):
+        bar_cells = cells[bar : bar + beats_per_bar]
+        bar_strs.append("  ".join(c.center(col_w) for c in bar_cells))
+
+    bars_per_line = 4
+    for i in range(0, len(bar_strs), bars_per_line):
+        chunk = bar_strs[i : i + bars_per_line]
+        is_last = i + bars_per_line >= len(bar_strs)
+        lines.append("| " + " | ".join(chunk) + (" ‖" if is_last else " |"))
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+# ── Jianpu PDF export ──────────────────────────────────────
+
+
+@dataclass(slots=True)
+class JianpuNote:
+    digit: str
+    dots_above: int = 0
+    dots_below: int = 0
+
+
+@dataclass(slots=True)
+class JianpuCell:
+    notes: list[JianpuNote] = field(default_factory=list)
+
+
+def _midi_to_jianpu_note(note: int) -> JianpuNote:
+    """Convert a MIDI note number to a structured ``JianpuNote``."""
+    pc = note % 12
+    octave = (note // 12) - 1
+
+    base = _JIANPU_NOTE.get(pc)
+    prefix = ""
+    if base is None:
+        lower = (pc - 1) % 12
+        upper = (pc + 1) % 12
+        if lower in _JIANPU_NOTE:
+            base = _JIANPU_NOTE[lower]
+            prefix = "#"
+        elif upper in _JIANPU_NOTE:
+            base = _JIANPU_NOTE[upper]
+            prefix = "b"
+        else:
+            return JianpuNote(digit="?")
+
+    diff = octave - 4
+    return JianpuNote(
+        digit=f"{prefix}{base}",
+        dots_above=max(diff, 0),
+        dots_below=max(-diff, 0),
+    )
+
+
+def _build_reverse_mapping(mapping: MappingConfig) -> dict[str, int]:
+    """Build keyboard-key to MIDI-note mapping (first match per key wins)."""
+    reverse: dict[str, int] = {}
+    for _pid, profile in mapping.profiles.items():
+        for note_str, key in profile.note_to_key.items():
+            try:
+                num = int(note_str)
+            except ValueError:
+                parsed = _note_name_to_midi_number(note_str)
+                if parsed is None:
+                    continue
+                num = parsed
+            reverse.setdefault(key, num)
+    return reverse
+
+
+def chart_to_jianpu_pdf(
+    chart: ChartDocument,
+    mapping: MappingConfig,
+    output_path: Path,
+    bpm: float = 120.0,
+    time_signature: str = "4/4",
+    title: str = "",
+) -> None:
+    """Render a chart as a Jianpu PDF using Sky-community notation style.
+
+    Layout: A4 landscape, eighth-note grid, chords stacked vertically,
+    octave dots drawn above / below each digit, empty slots left blank.
+    """
+    from fpdf import FPDF
+
+    reverse = _build_reverse_mapping(mapping)
+
+    ts_parts = time_signature.split("/")
+    beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
+    beat_ms = 60000.0 / bpm
+    grid_ms = beat_ms / 2
+    slots_per_bar = beats_per_bar * 2
+
+    events = sorted(
+        (e for e in chart.events if e.action in ("tap", "down")),
+        key=lambda e: e.time_ms,
+    )
+    if not events:
+        return
+
+    grid: dict[int, list[JianpuNote]] = {}
+    for ev in events:
+        midi_note = reverse.get(ev.key)
+        if midi_note is None:
+            continue
+        slot = round(ev.time_ms / grid_ms)
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note))
+
+    if not grid:
+        return
+
+    last_slot = max(grid.keys())
+    total_bars = (last_slot // slots_per_bar) + 1
+
+    bars: list[list[JianpuCell]] = []
+    for bar_idx in range(total_bars):
+        bar_cells: list[JianpuCell] = []
+        for slot in range(slots_per_bar):
+            abs_slot = bar_idx * slots_per_bar + slot
+            raw_notes = grid.get(abs_slot, [])
+            seen: set[tuple[str, int, int]] = set()
+            unique: list[JianpuNote] = []
+            for n in raw_notes:
+                k = (n.digit, n.dots_above, n.dots_below)
+                if k not in seen:
+                    seen.add(k)
+                    unique.append(n)
+            bar_cells.append(JianpuCell(notes=unique))
+        bars.append(bar_cells)
+
+    _render_jianpu_pdf(
+        bars, slots_per_bar, total_bars, output_path,
+        time_signature, bpm, title,
+    )
+
+
+# ── PDF renderer internals ─────────────────────────────────
+
+_CJK_FONT_CANDIDATES: list[tuple[str, str | None]] = [
+    ("C:/Windows/Fonts/msyh.ttc", "C:/Windows/Fonts/msyhbd.ttc"),
+    ("C:/Windows/Fonts/simhei.ttf", None),
+    ("/System/Library/Fonts/PingFang.ttc", None),
+    ("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc", None),
+    ("/usr/share/fonts/noto-cjk/NotoSansCJK-Regular.ttc", None),
+]
+
+
+def _register_cjk_font(pdf: object) -> str:
+    """Try to register a CJK-capable font. Returns the font family name."""
+    import os
+
+    for regular_path, bold_path in _CJK_FONT_CANDIDATES:
+        if os.path.isfile(regular_path):
+            pdf.add_font("cjk", fname=regular_path)  # type: ignore[union-attr]
+            if bold_path and os.path.isfile(bold_path):
+                pdf.add_font("cjk", style="B", fname=bold_path)  # type: ignore[union-attr]
+            else:
+                pdf.add_font("cjk", style="B", fname=regular_path)  # type: ignore[union-attr]
+            return "cjk"
+    return "Helvetica"
+
+
+_BARS_PER_LINE = 4
+_MARGIN = 15.0
+_PAGE_W = 297.0
+_PAGE_H = 210.0
+_LABEL_W = 12.0
+
+_DIGIT_PT = 14
+_DIGIT_MM = _DIGIT_PT * 0.3528
+_ASCENT = _DIGIT_MM * 0.72
+_NOTE_SPACING = _DIGIT_MM + 1.5
+_DOT_R = 0.55
+_DOT_ABOVE_GAP = 1.5
+_DOT_ABOVE_OFFSET = 1.6
+_DOT_BELOW_GAP = 1.5
+_DOT_BELOW_OFFSET = 1.0
+_ROW_GAP = 8.0
+_BAR_LINE_W = 0.3
+
+
+def _row_height(row_bars: list[list[JianpuCell]]) -> float:
+    max_chord = 1
+    max_da = 0
+    max_db = 0
+    for bar in row_bars:
+        for cell in bar:
+            if cell.notes:
+                max_chord = max(max_chord, len(cell.notes))
+                for n in cell.notes:
+                    max_da = max(max_da, n.dots_above)
+                    max_db = max(max_db, n.dots_below)
+    above_h = _DOT_ABOVE_OFFSET + max_da * _DOT_ABOVE_GAP if max_da else 0
+    below_h = _DOT_BELOW_OFFSET + max_db * _DOT_BELOW_GAP if max_db else 0
+    return above_h + max_chord * _NOTE_SPACING + below_h + _ROW_GAP
+
+
+def _render_jianpu_pdf(
+    bars: list[list[JianpuCell]],
+    slots_per_bar: int,
+    total_bars: int,
+    output_path: Path,
+    time_signature: str,
+    bpm: float,
+    title: str,
+) -> None:
+    from fpdf import FPDF
+
+    content_w = _PAGE_W - 2 * _MARGIN
+    music_w = content_w - _LABEL_W
+    cols_per_line = _BARS_PER_LINE * slots_per_bar
+    col_w = music_w / cols_per_line
+
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=False)
+    font = _register_cjk_font(pdf)
+    pdf.add_page()
+
+    y = _MARGIN
+    if title:
+        pdf.set_font(font, "B", 16)
+        tw = pdf.get_string_width(title)
+        pdf.text((_PAGE_W - tw) / 2, y + 5.5, title)
+        y += 10
+
+    info = f"1=C  {time_signature}  BPM={int(bpm)}"
+    pdf.set_font(font, "", 11)
+    tw = pdf.get_string_width(info)
+    pdf.text((_PAGE_W - tw) / 2, y + 4, info)
+    y += 9
+
+    pdf.set_font(font, "", _DIGIT_PT)
+    pdf.set_draw_color(0, 0, 0)
+    pdf.set_fill_color(0, 0, 0)
+
+    for row_start in range(0, total_bars, _BARS_PER_LINE):
+        row_bars = bars[row_start : row_start + _BARS_PER_LINE]
+        rh = _row_height(row_bars)
+
+        if y + rh > _PAGE_H - _MARGIN:
+            pdf.add_page()
+            y = _MARGIN
+
+        max_da = 0
+        max_chord = 1
+        for bar in row_bars:
+            for cell in bar:
+                if cell.notes:
+                    max_chord = max(max_chord, len(cell.notes))
+                    for n in cell.notes:
+                        max_da = max(max_da, n.dots_above)
+        above_h = (_DOT_ABOVE_OFFSET + max_da * _DOT_ABOVE_GAP) if max_da else 0
+        first_baseline_y = y + above_h + _ASCENT
+
+        bar_top = y - 1
+        bar_bot = y + rh - _ROW_GAP + 1
+
+        pdf.set_font(font, "", 9)
+        pdf.text(_MARGIN + 1, first_baseline_y, f"({row_start + 1})")
+        pdf.set_font(font, "", _DIGIT_PT)
+
+        music_x = _MARGIN + _LABEL_W
+        num_bars = len(row_bars)
+
+        for bi, bar in enumerate(row_bars):
+            bar_x = music_x + bi * slots_per_bar * col_w
+
+            pdf.set_line_width(_BAR_LINE_W)
+            pdf.line(bar_x, bar_top, bar_x, bar_bot)
+
+            for si, cell in enumerate(bar):
+                if not cell.notes:
+                    continue
+                cx = bar_x + si * col_w + col_w / 2
+
+                for ni, note in enumerate(cell.notes):
+                    baseline_y = first_baseline_y + ni * _NOTE_SPACING
+                    digit_w = pdf.get_string_width(note.digit)
+                    pdf.text(cx - digit_w / 2, baseline_y, note.digit)
+
+                    for d in range(note.dots_above):
+                        dy = baseline_y - _ASCENT - _DOT_ABOVE_OFFSET - d * _DOT_ABOVE_GAP
+                        pdf.ellipse(
+                            cx - _DOT_R, dy - _DOT_R, 2 * _DOT_R, 2 * _DOT_R, "F",
+                        )
+
+                    for d in range(note.dots_below):
+                        dy = baseline_y + _DOT_BELOW_OFFSET + d * _DOT_BELOW_GAP
+                        pdf.ellipse(
+                            cx - _DOT_R, dy - _DOT_R, 2 * _DOT_R, 2 * _DOT_R, "F",
+                        )
+
+        final_x = music_x + num_bars * slots_per_bar * col_w
+        is_last = row_start + num_bars >= total_bars
+        if is_last:
+            pdf.set_line_width(_BAR_LINE_W)
+            pdf.line(final_x - 1.5, bar_top, final_x - 1.5, bar_bot)
+            pdf.set_line_width(_BAR_LINE_W * 3)
+            pdf.line(final_x, bar_top, final_x, bar_bot)
+            pdf.set_line_width(_BAR_LINE_W)
+        else:
+            pdf.set_line_width(_BAR_LINE_W)
+            pdf.line(final_x, bar_top, final_x, bar_bot)
+
+        y += rh
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(output_path))

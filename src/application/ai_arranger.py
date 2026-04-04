@@ -191,6 +191,22 @@ def _get_style_block(style: str) -> str:
     return f"\n{block}" if block else ""
 
 
+_SIMPLIFY_BLOCK = """
+SIMPLIFICATION MODE — ACTIVE
+This arrangement targets real-time manual performance in the mobile game "Sky: Children of the Light".
+The player physically taps each note on a 15-key virtual instrument, so every extra key press increases difficulty.
+
+Requirements:
+- PRESERVE the main melody line at all costs — it must remain clearly recognizable.
+- DROP repetitive accompaniment patterns, sustained pedal tones, bass drones, and harmonic padding.
+- For chords with 3+ simultaneous notes, keep only the melody note and at most one supporting harmony note.
+- Remove octave doublings — keep the octave closer to the melody register.
+- Drop short ornamental notes (grace notes, trills, rapid runs) that add difficulty without melodic significance.
+- Prefer silence over a wrong-sounding substitute — use -1 to drop a note rather than mapping it to a poor replacement.
+- Target: reduce total note events by roughly 30-50% while keeping the piece musically recognizable.
+"""
+
+
 def build_remap_prompt(
     available: list[int],
     unmapped: list[int],
@@ -199,6 +215,7 @@ def build_remap_prompt(
     filename: str = "",
     meta: MidiMeta | None = None,
     optimal_hint: str = "",
+    simplify: bool = False,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
     unmapped_lines = []
@@ -211,8 +228,10 @@ def build_remap_prompt(
     style_block = _get_style_block(style)
 
     drop_hint = ""
-    if style in ("balanced", "creative"):
+    if simplify or style in ("balanced", "creative"):
         drop_hint = '\nUse -1 as the value to drop a note: {{"61": 60, "73": -1}}'
+
+    simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
     meta_block = _format_midi_meta(meta, filename) if meta else ""
 
@@ -236,6 +255,7 @@ def build_remap_prompt(
         "high_freq_hint": high_freq_hint,
         "style_block": style_block,
         "drop_hint": drop_hint,
+        "simplify_block": simplify_block,
     })
 
 
@@ -333,6 +353,7 @@ def build_context_prompt(
     filename: str = "",
     meta: MidiMeta | None = None,
     optimal_hint: str = "",
+    simplify: bool = False,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
@@ -345,8 +366,10 @@ def build_context_prompt(
     style_block = _get_style_block(style)
 
     drop_hint = ""
-    if style in ("balanced", "creative"):
+    if simplify or style in ("balanced", "creative"):
         drop_hint = '\nUse -1 as replacement to drop a note: {{"time_ms": 500, "original": 73, "replacement": -1}}'
+
+    simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
     meta_block = _format_midi_meta(meta, filename) if meta else ""
 
@@ -361,6 +384,7 @@ def build_context_prompt(
         "optimal_hint": optimal_hint,
         "style_block": style_block,
         "drop_hint": drop_hint,
+        "simplify_block": simplify_block,
         "sequence_text": sequence_text,
     })
 
@@ -556,15 +580,17 @@ def call_openai(
         create_kwargs.pop("max_tokens", None)
         stream = client.chat.completions.create(**create_kwargs)
 
-    chunks: list[str] = []
+    parts: list[str] = []
+    accumulated = ""
     for chunk in stream:
         if chunk.choices and chunk.choices[0].delta.content:
             text = chunk.choices[0].delta.content
-            chunks.append(text)
+            parts.append(text)
             if on_chunk:
-                on_chunk("".join(chunks))
+                accumulated += text
+                on_chunk(accumulated)
 
-    content = "".join(chunks)
+    content = accumulated if accumulated else "".join(parts)
     if not content:
         raise ValueError("AI returned empty content (streaming)")
     return content
@@ -585,6 +611,7 @@ def ai_arrange(
     model: str = "gpt-4o-mini",
     mode: str = "remap",
     style: str = "conservative",
+    simplify: bool = False,
     on_chunk: StreamCallback | None = None,
 ) -> AiArrangeResult:
     available = _get_available_notes(mapping, profile_id)
@@ -633,7 +660,7 @@ def ai_arrange(
         pass
 
     if mode == "context":
-        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint)
+        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint, simplify=simplify)
         raw = call_openai(
             api_key, prompt, base_url=base_url, model=model,
             on_chunk=on_chunk, max_tokens=65536,
@@ -650,7 +677,7 @@ def ai_arrange(
             total_notes=len(raw_events),
         )
 
-    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint)
+    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint, simplify=simplify)
     raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
     analysis_text, json_text = parse_analysis_and_json(raw)
     note_map = parse_remap_response(json_text) if json_text else {}

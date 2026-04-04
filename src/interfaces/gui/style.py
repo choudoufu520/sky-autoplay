@@ -306,6 +306,31 @@ QGroupBox::title {{
     left: 12px;
     padding: 0 6px;
 }}
+QGroupBox::indicator {{
+    width: 20px;
+    height: 20px;
+    border: 2px solid {c["border"]};
+    border-radius: 5px;
+    background: {c["input_bg"]};
+}}
+QGroupBox::indicator:checked {{
+    background: {c["accent"]};
+    border-color: {c["accent"]};
+}}
+QGroupBox::indicator:hover {{
+    border-color: {c["accent"]};
+}}
+QGroupBox#aiGroupBox {{
+    border: 1.5px solid {c["group_border"]};
+    padding-top: 20px;
+}}
+QGroupBox#aiGroupBox:checked {{
+    border-color: {c["accent"]};
+}}
+QGroupBox#aiGroupBox::title {{
+    font-size: 14px;
+    color: {c["text"]};
+}}
 
 /* ── plain text edit ── */
 QPlainTextEdit {{
