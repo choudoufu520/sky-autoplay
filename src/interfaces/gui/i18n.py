@@ -134,6 +134,21 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_key_hint": 'Current: {current_count} unmapped | Best: transpose {val}, octave {octave} ({key}, {instrument}) = {best_count} unmapped. <a href="{wiki}">Key guide</a>',
         "convert.ai_key_apply": "Apply",
         "convert.ai_key_optimal": "Current transpose/octave is already optimal",
+        "convert.ai_edit_prompt": "Edit Prompts",
+
+        # ── Prompt Editor ──
+        "prompt.title": "AI Prompt Editor",
+        "prompt.remap_template": "Remap Template",
+        "prompt.context_template": "Context Template",
+        "prompt.style_conservative": "Conservative Style",
+        "prompt.style_balanced": "Balanced Style",
+        "prompt.style_creative": "Creative Style",
+        "prompt.reset_current": "Reset Current",
+        "prompt.reset_all": "Reset All",
+        "prompt.save": "Save",
+        "prompt.cancel": "Cancel",
+        "prompt.hint": "Placeholders like {xxx} will be auto-filled at runtime. Do not remove them.",
+        "prompt.saved": "Prompts saved",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI:",
@@ -358,6 +373,21 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_key_hint": '当前: {current_count} 个未映射 | 建议: 移调 {val}，八度 {octave} ({key}，{instrument}) = {best_count} 个未映射。<a href="{wiki}">调式指南</a>',
         "convert.ai_key_apply": "应用",
         "convert.ai_key_optimal": "当前移调/八度已是最优",
+        "convert.ai_edit_prompt": "编辑提示词",
+
+        # ── 提示词编辑器 ──
+        "prompt.title": "AI 提示词编辑器",
+        "prompt.remap_template": "重映射模板",
+        "prompt.context_template": "上下文模板",
+        "prompt.style_conservative": "严格替换风格",
+        "prompt.style_balanced": "智能改编风格",
+        "prompt.style_creative": "自由改编风格",
+        "prompt.reset_current": "重置当前",
+        "prompt.reset_all": "全部重置",
+        "prompt.save": "保存",
+        "prompt.cancel": "取消",
+        "prompt.hint": "形如 {xxx} 的占位符会在运行时自动填充，请勿删除。",
+        "prompt.saved": "提示词已保存",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI：",

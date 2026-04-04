@@ -167,51 +167,57 @@ class MainWindow(QMainWindow):
         self._check_worker.start()
 
     def _on_check_finished(self, info: object) -> None:
-        if not isinstance(info, UpdateInfo):
-            return
-        if not info.has_update:
-            if self._manual_check:
-                QMessageBox.information(
-                    self,
-                    tr("update.check"),
-                    tr("update.no_update").format(version=info.current_version),
-                )
-                self.status_label.setText(tr("status.ready"))
-            return
+        try:
+            if not isinstance(info, UpdateInfo):
+                return
+            if not info.has_update:
+                if self._manual_check:
+                    QMessageBox.information(
+                        self,
+                        tr("update.check"),
+                        tr("update.no_update").format(version=info.current_version),
+                    )
+                    self.status_label.setText(tr("status.ready"))
+                return
 
-        self._pending_update = info
-        msg = QMessageBox(self)
-        msg.setWindowTitle(tr("update.available"))
-        msg.setIcon(QMessageBox.Icon.Information)
+            self._pending_update = info
+            msg = QMessageBox(self)
+            msg.setWindowTitle(tr("update.available"))
+            msg.setIcon(QMessageBox.Icon.Information)
 
-        text = tr("update.new_version").format(version=info.version, current=info.current_version)
-        if info.body:
-            text += f"\n\n{tr('update.release_notes')}\n{info.body[:500]}"
-        msg.setText(text)
+            text = tr("update.new_version").format(version=info.version, current=info.current_version)
+            if info.body:
+                text += f"\n\n{tr('update.release_notes')}\n{info.body[:500]}"
+            msg.setText(text)
 
-        if is_frozen() and info.download_url:
-            btn_download = msg.addButton(tr("update.download"), QMessageBox.ButtonRole.AcceptRole)
-        else:
-            btn_download = None
-        btn_open = msg.addButton(tr("update.open_release"), QMessageBox.ButtonRole.ActionRole)
-        msg.addButton(tr("update.skip"), QMessageBox.ButtonRole.RejectRole)
+            if is_frozen() and info.download_url:
+                btn_download = msg.addButton(tr("update.download"), QMessageBox.ButtonRole.AcceptRole)
+            else:
+                btn_download = None
+            btn_open = msg.addButton(tr("update.open_release"), QMessageBox.ButtonRole.ActionRole)
+            msg.addButton(tr("update.skip"), QMessageBox.ButtonRole.RejectRole)
 
-        msg.exec()
-        clicked = msg.clickedButton()
+            msg.exec()
+            clicked = msg.clickedButton()
 
-        if clicked == btn_download and info.download_url:
-            self._start_download(info.download_url)
-        elif clicked == btn_open:
-            webbrowser.open(GITHUB_RELEASES_URL)
+            if clicked == btn_download and info.download_url:
+                self._start_download(info.download_url)
+            elif clicked == btn_open:
+                webbrowser.open(GITHUB_RELEASES_URL)
+        except Exception:
+            pass
 
     def _on_check_error(self, err: str) -> None:
-        if self._manual_check:
-            QMessageBox.warning(
-                self,
-                tr("update.check"),
-                tr("update.check_error").format(err=err),
-            )
-            self.status_label.setText(tr("status.ready"))
+        try:
+            if self._manual_check:
+                QMessageBox.warning(
+                    self,
+                    tr("update.check"),
+                    tr("update.check_error").format(err=err),
+                )
+                self.status_label.setText(tr("status.ready"))
+        except Exception:
+            pass
 
     def _start_download(self, url: str) -> None:
         self._progress_dialog = QProgressDialog(
@@ -255,20 +261,27 @@ class MainWindow(QMainWindow):
             apply_update(Path(zip_path))
         except RuntimeError:
             QMessageBox.information(self, tr("update.check"), tr("update.source_hint"))
+        except Exception as exc:
+            QMessageBox.warning(
+                self, tr("update.check"), tr("update.download_error").format(err=str(exc))
+            )
 
     def _on_download_error(self, err: str) -> None:
         if self._progress_dialog:
             self._progress_dialog.close()
             self._progress_dialog = None
-        QMessageBox.warning(
-            self,
-            tr("update.check"),
-            tr("update.download_error").format(err=err),
-        )
+        try:
+            QMessageBox.warning(
+                self,
+                tr("update.check"),
+                tr("update.download_error").format(err=err),
+            )
+        except Exception:
+            pass
 
     def _on_download_cancel(self) -> None:
-        if self._download_worker and self._download_worker.isRunning():
-            self._download_worker.terminate()
+        if self._download_worker:
+            self._download_worker.cancel()
         self._progress_dialog = None
 
     def _show_about(self) -> None:

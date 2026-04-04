@@ -179,22 +179,16 @@ def _format_midi_meta(meta: MidiMeta, filename: str) -> str:
     return f"\n{header}{song_hint}\n"
 
 
-_STYLE_INSTRUCTIONS = {
-    "conservative": "",
-    "balanced": """
-ADDITIONAL FREEDOM — You MAY use -1 as the replacement value to DROP a note entirely. Use this when:
-- The note is an ornamental/passing tone with no good available replacement
-- It is an octave doubling of another note already in the chord
-- Removing it does not break the core melody line
-Only drop notes that are clearly non-essential. The main melody must remain intact.""",
-    "creative": """
-CREATIVE FREEDOM — You MAY use -1 as the replacement value to DROP a note. You have full artistic freedom:
-- Drop non-essential notes freely to produce a cleaner arrangement
-- Simplify dense chords to root + melody note only
-- Simplify fast ornamental runs to their key structural notes
-- Prioritize overall musicality and emotional impact on this limited instrument over note-for-note fidelity
-- It is better to have a clean, musical arrangement with fewer notes than a cluttered one trying to keep everything""",
-}
+def _load_templates() -> dict[str, str]:
+    from src.application.prompt_store import load_custom_prompts
+    return load_custom_prompts()
+
+
+def _get_style_block(style: str) -> str:
+    templates = _load_templates()
+    key = f"style_{style}"
+    block = templates.get(key, "")
+    return f"\n{block}" if block else ""
 
 
 def build_remap_prompt(
@@ -214,7 +208,7 @@ def build_remap_prompt(
     avail_min = min(available)
     avail_max = max(available)
     scale_key = _detect_scale_key(available)
-    style_block = _STYLE_INSTRUCTIONS.get(style, "")
+    style_block = _get_style_block(style)
 
     drop_hint = ""
     if style in ("balanced", "creative"):
@@ -229,47 +223,20 @@ def build_remap_prompt(
         names = ", ".join(f"{n}({_midi_to_name(n)})" for n in high_freq)
         high_freq_hint = f"\nHIGH-FREQUENCY NOTES (appear often, choose replacements extra carefully): {names}\n"
 
-    return f"""You are a professional music arranger.
-{meta_block}
-An instrument only has these notes available:
-[{avail_desc}]
-Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
-These notes form a {scale_key} scale spanning 2 octaves.
-Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
-{optimal_hint}
-The following MIDI notes from the original piece cannot be played on this instrument:
-{chr(10).join(unmapped_lines)}
-{high_freq_hint}
-For each unmapped note, suggest which available note should replace it.
-
-=== REPLACEMENT PRINCIPLES ===
-1. CLOSEST PITCH — replacement must be as close to the original as possible. Prefer the nearest available note (up or down).
-2. PRESERVE DIRECTION — if the note is above the instrument range, map to the highest available note. If below, map to the lowest.
-3. SHARPS/FLATS — for accidentals (C#, Eb), prefer the adjacent natural note that fits the musical context (half-step toward the key center).
-4. PRESERVE EMOTION — high notes carry tension/brightness; do NOT fold them down. Low notes carry depth; do NOT fold them up. Keep the emotional register.
-5. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, fold UP rather than DOWN.
-6. VOICE LEADING — if two unmapped notes are close in pitch (within 4 semitones), their replacements should also be close, preserving the relative spacing.
-
-=== FORBIDDEN ===
-- Do NOT map two different adjacent unmapped notes to the same replacement. Each distinct original pitch should get a distinct replacement when possible.
-- Do NOT create semitone clusters: if two unmapped notes are next to each other (e.g. 61 and 63), their replacements must not be adjacent semitones (e.g. both mapping to 60).
-
-=== EXAMPLE (good vs. bad) ===
-Unmapped: 61(C#4), 63(D#4).  Available: [..., 60(C4), 62(D4), 64(E4), ...]
-GOOD: {{"61": 62, "63": 64}} — each gets a distinct nearby replacement, spacing preserved.
-BAD:  {{"61": 60, "63": 60}} — two different notes mapped to same replacement, destroys detail.
-BAD:  {{"61": 60, "63": 62}} — both shifted down, but 60 and 62 lose the half-step tension of 61 vs 63.
-{style_block}
-Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
-
-## Analysis
-简要说明你的编曲策略：哪些音超出范围、你打算如何处理、你的推理过程。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
-
-## Mapping
-A JSON object mapping each unmapped MIDI number to its replacement, like:
-{{"61": 60, "63": 64}}{drop_hint}
-
-Nothing else after the JSON."""
+    templates = _load_templates()
+    template = templates.get("remap_template", "")
+    return template.format_map({
+        "meta_block": meta_block,
+        "avail_desc": avail_desc,
+        "avail_min_desc": f"{avail_min}({_midi_to_name(avail_min)})",
+        "avail_max_desc": f"{avail_max}({_midi_to_name(avail_max)})",
+        "scale_key": scale_key,
+        "optimal_hint": optimal_hint,
+        "unmapped_lines": chr(10).join(unmapped_lines),
+        "high_freq_hint": high_freq_hint,
+        "style_block": style_block,
+        "drop_hint": drop_hint,
+    })
 
 
 def parse_remap_response(response: str) -> dict[int, int]:
@@ -375,7 +342,7 @@ def build_context_prompt(
     avail_min = min(available)
     avail_max = max(available)
     scale_key = _detect_scale_key(available)
-    style_block = _STYLE_INSTRUCTIONS.get(style, "")
+    style_block = _get_style_block(style)
 
     drop_hint = ""
     if style in ("balanced", "creative"):
@@ -383,62 +350,19 @@ def build_context_prompt(
 
     meta_block = _format_midi_meta(meta, filename) if meta else ""
 
-    return f"""You are a professional music arranger.
-{meta_block}
-An instrument only has these notes available:
-[{avail_desc}]
-Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
-These notes form a {scale_key} scale spanning 2 octaves.
-Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
-{optimal_hint}
-Below is the note sequence from a MIDI track, grouped by simultaneous notes and organized by bar.
-- Notes marked [UNMAPPED] cannot be played on this instrument and need replacements.
-- Notes marked [MELODY] are the highest note in each group (typically the melody voice).
-- Notes without [MELODY] are accompaniment/chord tones.
-
-For each [UNMAPPED] note, suggest the best available replacement. The same original note at different positions MAY map to different replacements based on context.
-
-=== MELODY NOTES (tagged [MELODY]) ===
-These carry the main tune the listener hears. Treat with highest care:
-1. PRESERVE MELODIC CONTOUR — if the melody rises, the replacement must also rise. If it falls, the replacement must fall. Direction is more important than exact pitch.
-2. PRESERVE REGISTER — replacement must be as close to the original pitch as possible. NEVER move a melody note down by more than one octave.
-3. PRESERVE INTERVALS — maintain the relative distance between consecutive melody notes. A 3rd should stay roughly a 3rd.
-4. NO CONSECUTIVE DUPLICATES — do not map two originally different consecutive melody notes to the same replacement (unless the original already repeated).
-5. INTERVAL LIMIT — the interval between two consecutive melody replacements should not deviate from the original interval by more than 3 semitones. Example: original melody goes up 4 semitones (M3), replacement should go up 1-7 semitones. Never invert the direction.
-
-=== ACCOMPANIMENT / CHORD NOTES ===
-These provide harmonic support. More flexibility allowed:
-1. KEEP CHORD FUNCTION — prefer notes that preserve the chord quality (root, 3rd, 5th).
-2. AVOID CLASHES — within the same group, do not create adjacent semitones (e.g. C and C#) in the replacements.
-3. SIMPLIFICATION OK — if a chord has too many unmapped notes, it is better to keep root + one color tone than to force all notes into awkward positions.
-4. VOICE LEADING — when the same chord voice appears in consecutive groups, prefer the replacement closest to the previous group's replacement for that voice. Minimize total pitch movement of inner voices between consecutive chords.
-
-=== GENERAL RULES ===
-1. SHARPS/FLATS — for accidentals (C#, Eb, etc.), prefer the adjacent natural note in the direction of the melody movement.
-2. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, prefer folding UP over DOWN.
-3. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry warmth/depth. Do not systematically flatten the pitch range.
-
-=== EXAMPLE (good vs. bad) ===
-Original melody: 67(G4) -> 69(A4) -> 73(C#5)   (intervals: up 2, up 4)
-Available: [60,62,64,65,67,69,71,72,74,76,77,79,81,83,84]
-GOOD: 67 -> 69 -> 74    (up 2, up 5 — direction and rough interval preserved)
-BAD:  67 -> 69 -> 64    (up 2, DOWN 5 — direction inverted, destroys melodic contour)
-BAD:  67 -> 69 -> 69    (up 2, +0   — consecutive duplicates, melody stalls)
-{style_block}
-
-Note sequence:
-{sequence_text}
-
-Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
-
-## Analysis
-简要说明你的编曲策略：共有多少音符未映射、影响哪些音高范围、旋律音和伴奏音分别如何处理。如果你能从文件名识别出这首曲子，请说明曲名并结合对原曲的理解来编排。保持简洁（3-8行）。
-
-## Mapping
-A JSON array of replacements for UNMAPPED notes, like:
-[{{"time_ms": 1000, "original": 61, "replacement": 60}}, {{"time_ms": 2000, "original": 61, "replacement": 62}}]{drop_hint}
-
-Nothing else after the JSON array."""
+    templates = _load_templates()
+    template = templates.get("context_template", "")
+    return template.format_map({
+        "meta_block": meta_block,
+        "avail_desc": avail_desc,
+        "avail_min_desc": f"{avail_min}({_midi_to_name(avail_min)})",
+        "avail_max_desc": f"{avail_max}({_midi_to_name(avail_max)})",
+        "scale_key": scale_key,
+        "optimal_hint": optimal_hint,
+        "style_block": style_block,
+        "drop_hint": drop_hint,
+        "sequence_text": sequence_text,
+    })
 
 
 def parse_context_response(response: str) -> list[PositionRemap]:

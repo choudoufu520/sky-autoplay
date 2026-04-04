@@ -160,6 +160,7 @@ class ConvertTab(QWidget):
         self.ai_mode_combo = QComboBox()
         self.ai_mode_combo.addItem(tr("convert.ai_mode_remap"), userData="remap")
         self.ai_mode_combo.addItem(tr("convert.ai_mode_context"), userData="context")
+        self.ai_mode_combo.setCurrentIndex(1)
         ai_row4.addWidget(self.ai_mode_combo, 1)
 
         self.ai_style_label = QLabel()
@@ -168,11 +169,16 @@ class ConvertTab(QWidget):
         self.ai_style_combo.addItem(tr("convert.ai_style_conservative"), userData="conservative")
         self.ai_style_combo.addItem(tr("convert.ai_style_balanced"), userData="balanced")
         self.ai_style_combo.addItem(tr("convert.ai_style_creative"), userData="creative")
+        self.ai_style_combo.setCurrentIndex(2)
         ai_row4.addWidget(self.ai_style_combo, 1)
 
         self.ai_arrange_btn = QPushButton()
         self.ai_arrange_btn.clicked.connect(self._ai_arrange)
         ai_row4.addWidget(self.ai_arrange_btn)
+
+        self.ai_edit_prompt_btn = QPushButton()
+        self.ai_edit_prompt_btn.clicked.connect(self._open_prompt_editor)
+        ai_row4.addWidget(self.ai_edit_prompt_btn)
         ai_layout.addLayout(ai_row4)
 
         ai_opt_row = QHBoxLayout()
@@ -327,6 +333,7 @@ class ConvertTab(QWidget):
         self.ai_style_combo.setItemText(2, tr("convert.ai_style_creative"))
         self.ai_style_combo.setToolTip(tr("convert.ai_style_tip"))
         self.ai_arrange_btn.setText(tr("convert.ai_arrange"))
+        self.ai_edit_prompt_btn.setText(tr("convert.ai_edit_prompt"))
         self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
         self.ai_arrange_btn.setToolTip(tr("convert.ai_tip"))
         self.ai_optimal_apply_btn.setText(tr("convert.ai_key_apply"))
@@ -488,6 +495,12 @@ class ConvertTab(QWidget):
         self.transpose_spin.blockSignals(False)
         self.octave_spin.blockSignals(False)
         self._refresh_optimal_hint()
+
+    def _open_prompt_editor(self) -> None:
+        from src.interfaces.gui.prompt_editor_dialog import PromptEditorDialog
+
+        dlg = PromptEditorDialog(self)
+        dlg.exec()
 
     def _browse_midi(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("convert.dialog_midi"), "", "MIDI Files (*.mid *.midi)")

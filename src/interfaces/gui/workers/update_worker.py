@@ -15,8 +15,11 @@ class CheckUpdateWorker(QThread):
         try:
             info = check_for_update()
             self.finished.emit(info)
-        except Exception as exc:
-            self.error.emit(str(exc))
+        except BaseException as exc:
+            try:
+                self.error.emit(str(exc))
+            except Exception:
+                pass
 
 
 class DownloadUpdateWorker(QThread):
@@ -27,6 +30,10 @@ class DownloadUpdateWorker(QThread):
     def __init__(self, url: str) -> None:
         super().__init__()
         self._url = url
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        self._cancelled = True
 
     def run(self) -> None:
         try:
@@ -34,9 +41,16 @@ class DownloadUpdateWorker(QThread):
                 self._url,
                 progress_callback=self._on_progress,
             )
-            self.finished.emit(str(zip_path))
-        except Exception as exc:
-            self.error.emit(str(exc))
+            if not self._cancelled:
+                self.finished.emit(str(zip_path))
+        except BaseException as exc:
+            if not self._cancelled:
+                try:
+                    self.error.emit(str(exc))
+                except Exception:
+                    pass
 
     def _on_progress(self, downloaded: int, total: int) -> None:
+        if self._cancelled:
+            raise InterruptedError("Download cancelled")
         self.progress.emit(downloaded, total)

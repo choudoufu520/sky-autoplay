@@ -45,9 +45,12 @@ def get_app_dir() -> Path:
 
 
 def check_for_update() -> UpdateInfo:
-    req = urllib.request.Request(GITHUB_API, headers={"Accept": "application/vnd.github.v3+json"})
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        data = json.loads(resp.read().decode())
+    try:
+        req = urllib.request.Request(GITHUB_API, headers={"Accept": "application/vnd.github.v3+json"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode())
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError) as exc:
+        raise ConnectionError(f"Network error: {exc}") from exc
 
     tag: str = data.get("tag_name", "")
     remote_version = tag.lstrip("v")
@@ -114,20 +117,42 @@ def apply_update(zip_path: Path) -> None:
 
     inner = extract_dir / "SkyMusicAutomation"
     if not inner.exists():
-        candidates = list(extract_dir.iterdir())
-        inner = candidates[0] if candidates else extract_dir
+        if (extract_dir / "SkyMusicAutomation.exe").exists():
+            inner = extract_dir
+        else:
+            candidates = [c for c in extract_dir.iterdir() if c.is_dir()]
+            inner = candidates[0] if len(candidates) == 1 else extract_dir
 
+    pid = os.getpid()
+    exe_path = app_dir / "SkyMusicAutomation.exe"
+
+    log_path = zip_path.parent / "_update.log"
     bat = zip_path.parent / "_update.bat"
     bat.write_text(
         f"""@echo off
 title Updating SkyMusicAutomation...
-echo Waiting for application to exit...
-timeout /t 2 /nobreak >nul
-xcopy /s /e /y "{inner}\\*" "{app_dir}\\" >nul
-echo Update complete. Restarting...
-start "" "{app_dir}\\SkyMusicAutomation.exe"
-del /q "{zip_path}"
-rmdir /s /q "{extract_dir}"
+set "LOG={log_path}"
+echo [%date% %time%] Update started, waiting for PID {pid} >> "%LOG%"
+echo Source: {inner} >> "%LOG%"
+echo Target: {app_dir} >> "%LOG%"
+:waitloop
+tasklist /FI "PID eq {pid}" 2>NUL | find /I "{pid}" >NUL
+if not errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto waitloop
+)
+echo [%date% %time%] Process exited, copying files... >> "%LOG%"
+xcopy /s /e /y "{inner}\\*" "{app_dir}\\" >> "%LOG%" 2>&1
+if errorlevel 1 (
+    echo [%date% %time%] xcopy failed, retry in 3s... >> "%LOG%"
+    timeout /t 3 /nobreak >nul
+    xcopy /s /e /y "{inner}\\*" "{app_dir}\\" >> "%LOG%" 2>&1
+)
+echo [%date% %time%] Copy done, restarting... >> "%LOG%"
+start "" "{exe_path}"
+timeout /t 3 /nobreak >nul
+del /q "{zip_path}" >nul 2>&1
+rmdir /s /q "{extract_dir}" >nul 2>&1
 del "%~f0"
 """,
         encoding="utf-8",
