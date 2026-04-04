@@ -14,7 +14,7 @@ CountdownCallback = Callable[[int], None]
 KeyDisplayCallback = Callable[[list[str], list[tuple[int, str]]], None]
 
 LOOKAHEAD_MS = 3000
-TAP_PRESS_MS = 30
+DEFAULT_TAP_PRESS_MS = 50
 
 
 @dataclass(slots=True)
@@ -22,6 +22,7 @@ class PlayOptions:
     latency_offset_ms: int = 0
     countdown_sec: int = 3
     chord_stagger_ms: int = 0
+    tap_press_ms: int = DEFAULT_TAP_PRESS_MS
     dry_run: bool = False
     debug: bool = False
 
@@ -89,12 +90,19 @@ def play_chart(
                         upcoming.append((offset, fe.key))
             key_display(current_keys, upcoming)
 
-        for idx, event in enumerate(events):
+        tap_events = [e for e in events if e.action == "tap"]
+        other_events = [e for e in events if e.action != "tap"]
+
+        for event in other_events:
             if _stopped():
                 break
-            if options.chord_stagger_ms > 0 and idx > 0:
-                time.sleep(options.chord_stagger_ms / 1000)
             _dispatch_event(event, backend, pressed_keys, options.debug, _log)
+
+        if tap_events and not _stopped():
+            _dispatch_tap_group(
+                tap_events, backend, options.chord_stagger_ms,
+                options.tap_press_ms, options.debug, _log,
+            )
 
         if progress:
             elapsed = int((time.perf_counter() - start) * 1000)
@@ -134,6 +142,34 @@ def _wait_until(
             time.sleep((remain - 2) / 1000)
 
 
+def _dispatch_tap_group(
+    events: list[ChartEvent],
+    backend: BaseInputBackend,
+    stagger_ms: int,
+    tap_press_ms: int,
+    debug: bool,
+    log: LogCallback | None = None,
+) -> None:
+    """Press all tap keys nearly simultaneously, hold for one game-frame
+    duration, then release all.  This avoids serial behaviour where each tap
+    blocked before the next key could fire."""
+    for idx, event in enumerate(events):
+        if debug:
+            msg = f"[event] t={event.time_ms} action={event.action} key={event.key}"
+            if log:
+                log(msg)
+            else:
+                print(msg)
+        if stagger_ms > 0 and idx > 0:
+            time.sleep(stagger_ms / 1000)
+        backend.key_down(event.key)
+
+    time.sleep(max(tap_press_ms, 1) / 1000)
+
+    for event in events:
+        backend.key_up(event.key)
+
+
 def _dispatch_event(
     event: ChartEvent,
     backend: BaseInputBackend,
@@ -147,10 +183,6 @@ def _dispatch_event(
             log(msg)
         else:
             print(msg)
-
-    if event.action == "tap":
-        backend.tap(event.key, TAP_PRESS_MS)
-        return
 
     if event.action == "down":
         if event.key not in pressed_keys:

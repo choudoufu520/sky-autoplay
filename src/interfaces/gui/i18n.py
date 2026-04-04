@@ -207,6 +207,7 @@ _T: dict[str, dict[str, str]] = {
         "play.latency": "Latency Offset:",
         "play.countdown": "Countdown:",
         "play.stagger": "Chord Stagger:",
+        "play.tap_press": "Tap Duration:",
         "play.dry_run": "Dry Run (no key output)",
         "play.debug": "Debug Log",
         "play.start": "Start Play",
@@ -218,6 +219,7 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_latency": "Compensate input delay; positive = send keys earlier",
         "play.tip_countdown": "Countdown before playback starts (switch to game window)",
         "play.tip_stagger": "Delay between simultaneous keys to avoid the game missing inputs",
+        "play.tip_tap_press": "How long each key is held down per tap (≥1 game frame ≈ 33ms at 30fps)",
         "play.tip_dry_run": "Simulate playback without sending actual key presses (for testing)",
 
         # ── Overlay ──
@@ -446,6 +448,7 @@ _T: dict[str, dict[str, str]] = {
         "play.latency": "延迟补偿：",
         "play.countdown": "倒计时：",
         "play.stagger": "和弦错开：",
+        "play.tap_press": "按键时长：",
         "play.dry_run": "空跑模式（不发送按键）",
         "play.debug": "调试日志",
         "play.start": "开始演奏",
@@ -457,6 +460,7 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_latency": "补偿输入延迟，正值提前发送按键",
         "play.tip_countdown": "按下开始后的倒计时，用于切换到游戏窗口",
         "play.tip_stagger": "同时按下多个键时的间隔，避免游戏漏键",
+        "play.tip_tap_press": "每次点按的按住时长（需≥1帧，30fps下约33ms）",
         "play.tip_dry_run": "模拟演奏，不实际发送按键，用于调试",
 
         # ── 浮窗 ──

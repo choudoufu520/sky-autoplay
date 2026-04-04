@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from src.application.player import PlayOptions
+from src.application.player import DEFAULT_TAP_PRESS_MS, PlayOptions
 from src.infrastructure.input_backends import DryRunInputBackend, PynputInputBackend
 from src.infrastructure.repository import load_chart
 from src.interfaces.gui.i18n import on_language_changed, tr
@@ -65,6 +65,13 @@ class PlayTab(QWidget):
         self.stagger_spin.setSuffix(" ms")
         self.form.addRow(self.stagger_label, self.stagger_spin)
 
+        self.tap_press_label = QLabel()
+        self.tap_press_spin = QSpinBox()
+        self.tap_press_spin.setRange(10, 200)
+        self.tap_press_spin.setValue(DEFAULT_TAP_PRESS_MS)
+        self.tap_press_spin.setSuffix(" ms")
+        self.form.addRow(self.tap_press_label, self.tap_press_spin)
+
         self.dry_run_check = QCheckBox()
         self.form.addRow(self.dry_run_check)
 
@@ -99,6 +106,7 @@ class PlayTab(QWidget):
         self.latency_label.setText(tr("play.latency"))
         self.countdown_label.setText(tr("play.countdown"))
         self.stagger_label.setText(tr("play.stagger"))
+        self.tap_press_label.setText(tr("play.tap_press"))
 
         self.dry_run_check.setText(tr("play.dry_run"))
         self.debug_check.setText(tr("play.debug"))
@@ -108,6 +116,7 @@ class PlayTab(QWidget):
         self.latency_spin.setToolTip(tr("play.tip_latency"))
         self.countdown_spin.setToolTip(tr("play.tip_countdown"))
         self.stagger_spin.setToolTip(tr("play.tip_stagger"))
+        self.tap_press_spin.setToolTip(tr("play.tip_tap_press"))
         self.dry_run_check.setToolTip(tr("play.tip_dry_run"))
 
     def set_chart_path(self, path: str) -> None:
@@ -134,6 +143,7 @@ class PlayTab(QWidget):
             latency_offset_ms=self.latency_spin.value(),
             countdown_sec=self.countdown_spin.value(),
             chord_stagger_ms=self.stagger_spin.value(),
+            tap_press_ms=self.tap_press_spin.value(),
             dry_run=self.dry_run_check.isChecked(),
             debug=self.debug_check.isChecked(),
         )
