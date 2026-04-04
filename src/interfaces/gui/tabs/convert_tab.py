@@ -10,11 +10,14 @@ from PySide6.QtWidgets import (
     QFormLayout,
     QGroupBox,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
     QLineEdit,
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -158,6 +161,15 @@ class ConvertTab(QWidget):
         self.ai_mode_combo.addItem(tr("convert.ai_mode_remap"), userData="remap")
         self.ai_mode_combo.addItem(tr("convert.ai_mode_context"), userData="context")
         ai_row4.addWidget(self.ai_mode_combo, 1)
+
+        self.ai_style_label = QLabel()
+        ai_row4.addWidget(self.ai_style_label)
+        self.ai_style_combo = QComboBox()
+        self.ai_style_combo.addItem(tr("convert.ai_style_conservative"), userData="conservative")
+        self.ai_style_combo.addItem(tr("convert.ai_style_balanced"), userData="balanced")
+        self.ai_style_combo.addItem(tr("convert.ai_style_creative"), userData="creative")
+        ai_row4.addWidget(self.ai_style_combo, 1)
+
         self.ai_arrange_btn = QPushButton()
         self.ai_arrange_btn.clicked.connect(self._ai_arrange)
         ai_row4.addWidget(self.ai_arrange_btn)
@@ -177,6 +189,34 @@ class ConvertTab(QWidget):
         self.ai_copy_btn.clicked.connect(self._copy_ai_status)
         ai_status_row.addWidget(self.ai_copy_btn)
         ai_layout.addLayout(ai_status_row)
+
+        self.ai_review_table = QTableWidget(0, 5)
+        self.ai_review_table.setVisible(False)
+        self.ai_review_table.setMaximumHeight(200)
+        self.ai_review_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.ai_review_table.verticalHeader().setVisible(False)
+        ai_layout.addWidget(self.ai_review_table)
+
+        self.ai_feedback_edit = QPlainTextEdit()
+        self.ai_feedback_edit.setVisible(False)
+        self.ai_feedback_edit.setMaximumHeight(50)
+        self.ai_feedback_edit.setPlaceholderText(tr("convert.ai_feedback_placeholder"))
+        ai_layout.addWidget(self.ai_feedback_edit)
+
+        ai_action_row = QHBoxLayout()
+        self.ai_apply_btn = QPushButton()
+        self.ai_apply_btn.setVisible(False)
+        self.ai_apply_btn.clicked.connect(self._apply_review_table)
+        ai_action_row.addWidget(self.ai_apply_btn)
+        self.ai_retry_btn = QPushButton()
+        self.ai_retry_btn.setVisible(False)
+        self.ai_retry_btn.clicked.connect(self._retry_with_feedback)
+        ai_action_row.addWidget(self.ai_retry_btn)
+        self.ai_cancel_btn = QPushButton()
+        self.ai_cancel_btn.setVisible(False)
+        self.ai_cancel_btn.clicked.connect(self._exit_review_mode)
+        ai_action_row.addWidget(self.ai_cancel_btn)
+        ai_layout.addLayout(ai_action_row)
 
         layout.addWidget(self.ai_group)
 
@@ -203,6 +243,8 @@ class ConvertTab(QWidget):
         self._ai_position_map: dict[tuple[int, int], int] | None = None
         self._ai_worker = None
         self._preview_midi_path: str | None = None
+        self._ai_available_notes: list[int] = []
+        self._ai_last_result: object | None = None
 
         self._ai_timer = QTimer(self)
         self._ai_timer.setInterval(1000)
@@ -258,10 +300,26 @@ class ConvertTab(QWidget):
         self.ai_mode_combo.setItemText(0, tr("convert.ai_mode_remap"))
         self.ai_mode_combo.setItemText(1, tr("convert.ai_mode_context"))
         self.ai_mode_combo.setToolTip(tr("convert.ai_mode_tip"))
+        self.ai_style_label.setText(tr("convert.ai_style"))
+        self.ai_style_combo.setItemText(0, tr("convert.ai_style_conservative"))
+        self.ai_style_combo.setItemText(1, tr("convert.ai_style_balanced"))
+        self.ai_style_combo.setItemText(2, tr("convert.ai_style_creative"))
+        self.ai_style_combo.setToolTip(tr("convert.ai_style_tip"))
         self.ai_arrange_btn.setText(tr("convert.ai_arrange"))
         self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
         self.ai_arrange_btn.setToolTip(tr("convert.ai_tip"))
         self.ai_copy_btn.setText(tr("convert.ai_copy"))
+        self.ai_review_table.setHorizontalHeaderLabels([
+            tr("convert.ai_review_original"),
+            tr("convert.ai_review_name"),
+            tr("convert.ai_review_suggested"),
+            tr("convert.ai_review_suggested_name"),
+            tr("convert.ai_review_action"),
+        ])
+        self.ai_feedback_edit.setPlaceholderText(tr("convert.ai_feedback_placeholder"))
+        self.ai_apply_btn.setText(tr("convert.ai_apply"))
+        self.ai_retry_btn.setText(tr("convert.ai_retry"))
+        self.ai_cancel_btn.setText(tr("convert.ai_cancel"))
 
     def set_midi_path(self, path: str) -> None:
         self._midi_path = path
@@ -345,6 +403,7 @@ class ConvertTab(QWidget):
             pass
 
     def _ai_arrange(self) -> None:
+        from src.application.ai_arranger import _get_available_notes
         from src.interfaces.gui.workers.ai_worker import AiArrangeWorker
 
         midi_path = self._midi_path or self.midi_edit.text().strip()
@@ -365,11 +424,13 @@ class ConvertTab(QWidget):
             return
 
         profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
+        self._ai_available_notes = _get_available_notes(mapping_config, profile)
         single_track_val = self.single_track_combo.currentData()
         base_url = self.ai_url_edit.text().strip() or None
         model = self.ai_model_edit.text().strip() or "gpt-4o-mini"
 
         mode = self.ai_mode_combo.currentData() or "remap"
+        style = self.ai_style_combo.currentData() or "conservative"
 
         self.ai_arrange_btn.setEnabled(False)
         self._ai_elapsed = 0
@@ -387,6 +448,7 @@ class ConvertTab(QWidget):
             base_url=base_url,
             model=model,
             mode=mode,
+            style=style,
             parent=self,
         )
         self._ai_worker.finished.connect(self._on_ai_finished)
@@ -399,33 +461,24 @@ class ConvertTab(QWidget):
         from src.application.ai_arranger import AiArrangeResult
 
         self._ai_timer.stop()
-        self.ai_arrange_btn.setEnabled(True)
         self.ai_copy_btn.setVisible(False)
         if not isinstance(result, AiArrangeResult):
+            self.ai_arrange_btn.setEnabled(True)
             return
 
-        self._ai_note_map = None
-        self._ai_position_map = None
-
+        self._ai_last_result = result
         elapsed = self._ai_elapsed
 
-        if result.mode == "context" and result.position_map:
-            pos_dict: dict[tuple[int, int], int] = {}
-            for pr in result.position_map:
-                pos_dict[(pr.time_ms, pr.original)] = pr.replacement
-            self._ai_position_map = pos_dict
-            count = len(result.position_map)
-            self.ai_status_label.setText(
-                tr("convert.ai_done_context").format(mapped=count, unmapped=result.unmapped_count)
-                + f"  ({elapsed}s)"
-            )
+        self.ai_status_label.setText(tr("convert.ai_analyze_done").format(sec=elapsed))
+
+        if result.analysis_text:
+            self.result_text.setPlainText(result.analysis_text)
         else:
-            self._ai_note_map = result.note_map if result.note_map else None
-            count = len(result.note_map) if result.note_map else 0
-            self.ai_status_label.setText(
-                tr("convert.ai_done").format(mapped=count, unmapped=result.unmapped_count)
-                + f"  ({elapsed}s)"
-            )
+            self.result_text.setPlainText(result.explanation)
+
+        if result.mode == "remap" and result.note_map:
+            self._populate_review_table(result.note_map)
+        self._enter_review_mode()
 
     def _on_ai_chunk(self, accumulated: str) -> None:
         self.result_text.setPlainText(accumulated)
@@ -440,6 +493,7 @@ class ConvertTab(QWidget):
     def _on_ai_error(self, msg: str) -> None:
         self._ai_timer.stop()
         elapsed = self._ai_elapsed
+        self.ai_arrange_btn.setVisible(True)
         self.ai_arrange_btn.setEnabled(True)
         self._ai_note_map = None
         self._ai_position_map = None
@@ -452,6 +506,148 @@ class ConvertTab(QWidget):
         clipboard = QApplication.clipboard()
         if clipboard:
             clipboard.setText(self.ai_status_label.text())
+
+    # ── Review mode ─────────────────────────────────────────
+
+    def _enter_review_mode(self) -> None:
+        self.ai_arrange_btn.setVisible(False)
+        is_remap = (
+            self._ai_last_result is not None
+            and getattr(self._ai_last_result, "mode", "") == "remap"
+        )
+        self.ai_review_table.setVisible(is_remap)
+        self.ai_feedback_edit.setVisible(True)
+        self.ai_feedback_edit.clear()
+        self.ai_apply_btn.setVisible(True)
+        self.ai_retry_btn.setVisible(True)
+        self.ai_cancel_btn.setVisible(True)
+
+    def _exit_review_mode(self) -> None:
+        self.ai_review_table.setVisible(False)
+        self.ai_review_table.setRowCount(0)
+        self.ai_feedback_edit.setVisible(False)
+        self.ai_apply_btn.setVisible(False)
+        self.ai_retry_btn.setVisible(False)
+        self.ai_cancel_btn.setVisible(False)
+        self.ai_arrange_btn.setVisible(True)
+        self.ai_arrange_btn.setEnabled(True)
+        self._ai_last_result = None
+        self.ai_status_label.clear()
+
+    def _populate_review_table(self, note_map: dict[int, int]) -> None:
+        from src.application.ai_arranger import _midi_to_name
+
+        table = self.ai_review_table
+        table.setRowCount(len(note_map))
+        drop_label = tr("convert.ai_review_drop")
+
+        for row, (orig, repl) in enumerate(sorted(note_map.items())):
+            orig_item = QTableWidgetItem(str(orig))
+            orig_item.setFlags(orig_item.flags() & ~orig_item.flags().ItemIsEditable)
+            table.setItem(row, 0, orig_item)
+
+            name_item = QTableWidgetItem(_midi_to_name(orig))
+            name_item.setFlags(name_item.flags() & ~name_item.flags().ItemIsEditable)
+            table.setItem(row, 1, name_item)
+
+            sugg_item = QTableWidgetItem(drop_label if repl == -1 else str(repl))
+            sugg_item.setFlags(sugg_item.flags() & ~sugg_item.flags().ItemIsEditable)
+            table.setItem(row, 2, sugg_item)
+
+            sugg_name_item = QTableWidgetItem(
+                drop_label if repl == -1 else _midi_to_name(repl)
+            )
+            sugg_name_item.setFlags(sugg_name_item.flags() & ~sugg_name_item.flags().ItemIsEditable)
+            table.setItem(row, 3, sugg_name_item)
+
+            combo = QComboBox()
+            combo.addItem(drop_label, userData=-1)
+            for n in self._ai_available_notes:
+                combo.addItem(f"{n} ({_midi_to_name(n)})", userData=n)
+            if repl == -1:
+                combo.setCurrentIndex(0)
+            else:
+                for i in range(combo.count()):
+                    if combo.itemData(i) == repl:
+                        combo.setCurrentIndex(i)
+                        break
+            table.setCellWidget(row, 4, combo)
+
+    def _apply_review_table(self) -> None:
+        from src.application.ai_arranger import AiArrangeResult
+
+        result = self._ai_last_result
+        if not isinstance(result, AiArrangeResult):
+            self._exit_review_mode()
+            return
+
+        status_msg = ""
+        if result.mode == "remap":
+            note_map: dict[int, int] = {}
+            for row in range(self.ai_review_table.rowCount()):
+                orig_item = self.ai_review_table.item(row, 0)
+                combo = self.ai_review_table.cellWidget(row, 4)
+                if orig_item and isinstance(combo, QComboBox):
+                    orig = int(orig_item.text())
+                    repl = combo.currentData()
+                    if isinstance(repl, int):
+                        note_map[orig] = repl
+            self._ai_note_map = note_map if note_map else None
+            self._ai_position_map = None
+            status_msg = tr("convert.ai_applied_direct").format(count=len(note_map))
+        elif result.mode == "context" and result.position_map:
+            pos_dict: dict[tuple[int, int], int] = {}
+            for pr in result.position_map:
+                pos_dict[(pr.time_ms, pr.original)] = pr.replacement
+            self._ai_position_map = pos_dict
+            self._ai_note_map = None
+            status_msg = tr("convert.ai_done_context").format(
+                mapped=len(result.position_map), unmapped=result.unmapped_count,
+            )
+
+        self._exit_review_mode()
+        self.ai_status_label.setText(status_msg)
+
+    def _retry_with_feedback(self) -> None:
+        from src.application.ai_arranger import AiArrangeResult
+        from src.interfaces.gui.workers.ai_worker import AiRetryWorker
+
+        result = self._ai_last_result
+        if not isinstance(result, AiArrangeResult):
+            return
+
+        feedback = self.ai_feedback_edit.toPlainText().strip()
+        if not feedback:
+            feedback = "Please try again with better arrangement."
+
+        api_key = self.ai_key_edit.text().strip()
+        base_url = self.ai_url_edit.text().strip() or None
+        model = self.ai_model_edit.text().strip() or "gpt-4o-mini"
+
+        max_tokens = 65536 if result.mode == "context" else 16384
+
+        self._exit_review_mode()
+        self.ai_arrange_btn.setVisible(False)
+        self._ai_elapsed = 0
+        self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
+        self._ai_timer.start()
+
+        self._ai_worker = AiRetryWorker(
+            original_prompt=result.prompt,
+            previous_analysis=result.analysis_text or result.explanation,
+            user_feedback=feedback,
+            api_key=api_key,
+            base_url=base_url,
+            model=model,
+            mode=result.mode,
+            max_tokens=max_tokens,
+            parent=self,
+        )
+        self._ai_worker.finished.connect(self._on_ai_finished)
+        self._ai_worker.error.connect(self._on_ai_error)
+        self._ai_worker.chunk_received.connect(self._on_ai_chunk)
+        self.result_text.clear()
+        self._ai_worker.start()
 
     def _listen_preview(self) -> None:
         import os

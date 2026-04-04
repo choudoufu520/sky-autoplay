@@ -75,12 +75,16 @@ def _lookup_key(
         pos_key = (time_ms, final_note)
         if pos_key in ai_position_map:
             replacement = ai_position_map[pos_key]
+            if replacement == -1:
+                return None, f"ai-drop: {final_note}"
             key = _exact_lookup(profile.note_to_key, replacement)
             if key is not None:
                 return key, f"ai-ctx: {final_note}->{replacement}"
 
     if ai_note_map and final_note in ai_note_map:
         replacement = ai_note_map[final_note]
+        if replacement == -1:
+            return None, f"ai-drop: {final_note}"
         key = _exact_lookup(profile.note_to_key, replacement)
         if key is not None:
             return key, f"ai: {final_note}->{replacement}"

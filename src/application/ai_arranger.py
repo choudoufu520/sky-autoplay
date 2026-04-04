@@ -31,6 +31,8 @@ class AiArrangeResult:
     position_map: list[PositionRemap] = field(default_factory=list)
     mode: str = "remap"
     explanation: str = ""
+    analysis_text: str = ""
+    prompt: str = ""
     unmapped_count: int = 0
     total_notes: int = 0
 
@@ -85,32 +87,67 @@ def analyze_unmapped_notes(
 # ── Remap mode ──────────────────────────────────────────────
 
 
+_STYLE_INSTRUCTIONS = {
+    "conservative": "",
+    "balanced": """
+ADDITIONAL FREEDOM — You MAY use -1 as the replacement value to DROP a note entirely. Use this when:
+- The note is an ornamental/passing tone with no good available replacement
+- It is an octave doubling of another note already in the chord
+- Removing it does not break the core melody line
+Only drop notes that are clearly non-essential. The main melody must remain intact.""",
+    "creative": """
+CREATIVE FREEDOM — You MAY use -1 as the replacement value to DROP a note. You have full artistic freedom:
+- Drop non-essential notes freely to produce a cleaner arrangement
+- Simplify dense chords to root + melody note only
+- Simplify fast ornamental runs to their key structural notes
+- Prioritize overall musicality and emotional impact on this limited instrument over note-for-note fidelity
+- It is better to have a clean, musical arrangement with fewer notes than a cluttered one trying to keep everything""",
+}
+
+
 def build_remap_prompt(
     available: list[int],
     unmapped: list[int],
     unmapped_counts: Counter[int],
+    style: str = "conservative",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
     unmapped_lines = []
     for n in unmapped:
         unmapped_lines.append(f"  - {n} ({_midi_to_name(n)}), appears {unmapped_counts[n]} times")
 
+    avail_min = min(available)
+    avail_max = max(available)
+    style_block = _STYLE_INSTRUCTIONS.get(style, "")
+
+    drop_hint = ""
+    if style in ("balanced", "creative"):
+        drop_hint = '\nUse -1 as the value to drop a note: {{"61": 60, "73": -1}}'
+
     return f"""You are a professional music arranger. An instrument only has these notes available:
 [{avail_desc}]
+Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
 
 The following MIDI notes from the original piece cannot be played on this instrument:
 {chr(10).join(unmapped_lines)}
 
-For each unmapped note, suggest which available note should replace it to preserve the melody and harmony as much as possible. Consider:
-1. Prefer notes within the same octave when possible
-2. For sharps/flats, choose the natural note that best fits musically
-3. For out-of-range notes, fold into the nearest available octave
-4. Preserve melodic intervals where possible
+For each unmapped note, suggest which available note should replace it. Follow these principles IN ORDER OF PRIORITY:
+1. PRESERVE REGISTER — keep the replacement as close to the original pitch as possible. Do NOT drop notes down an octave unless absolutely necessary.
+2. PRESERVE EMOTION — high notes carry tension and brightness; map them to the HIGHEST available notes rather than folding down. Low notes carry depth; map them to the LOWEST available notes.
+3. PREFER SAME DIRECTION — if the original note is above the range, map to the highest available note. If below, map to the lowest.
+4. SHARPS/FLATS — for accidentals (e.g. C#, Eb), prefer the adjacent natural note that fits the musical context (usually the note a half-step away in the direction of the melody).
+5. MINIMIZE OCTAVE FOLDING — only fold into a different octave as a last resort, and prefer folding UP over DOWN to preserve brightness.
+{style_block}
+Your response MUST have exactly two sections with these headers:
 
-Return ONLY a JSON object mapping each unmapped MIDI number to its replacement, like:
-{{"61": 60, "63": 64}}
+## Analysis
+Briefly explain your arrangement strategy: which notes are out of range, how you plan to handle them, and your reasoning. Keep it concise (3-8 lines).
 
-No explanation, just the JSON."""
+## Mapping
+A JSON object mapping each unmapped MIDI number to its replacement, like:
+{{"61": 60, "63": 64}}{drop_hint}
+
+Nothing else after the JSON."""
 
 
 def parse_remap_response(response: str) -> dict[int, int]:
@@ -138,6 +175,7 @@ def build_context_prompt(
     events: list[RawMidiEvent],
     shift: int,
     available_set: set[int],
+    style: str = "conservative",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
@@ -147,20 +185,44 @@ def build_context_prompt(
         mapped = "OK" if final in available_set else "UNMAPPED"
         note_lines.append(f"  t={ev.time_ms}ms, note={final}({_midi_to_name(final)}), dur={ev.duration_ms}ms [{mapped}]")
 
+    avail_min = min(available)
+    avail_max = max(available)
+    style_block = _STYLE_INSTRUCTIONS.get(style, "")
+
+    drop_hint = ""
+    if style in ("balanced", "creative"):
+        drop_hint = '\nUse -1 as replacement to drop a note: {{"time_ms": 500, "original": 73, "replacement": -1}}'
+
     return f"""You are a professional music arranger. An instrument only has these notes available:
 [{avail_desc}]
+Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
 
 Below is the note sequence from a MIDI track. Notes marked [UNMAPPED] cannot be played on this instrument.
 Analyze the melodic and harmonic context, then for each [UNMAPPED] note, suggest the best available replacement.
 The same original note at different positions MAY map to different replacements based on context.
 
+ARRANGEMENT PRINCIPLES (in priority order):
+1. PRESERVE REGISTER — keep replacements as close to the original pitch as possible. Do NOT systematically drop notes down an octave.
+2. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry depth/warmth. Map high out-of-range notes to the HIGHEST available notes, not the lowest.
+3. PRESERVE MELODIC CONTOUR — if the original melody rises, the replacement should also rise (or stay level). If it falls, the replacement should also fall. The direction of movement matters more than exact intervals.
+4. PRESERVE INTERVALS — try to maintain the relative distance between consecutive notes. If two notes were a 3rd apart, their replacements should ideally also be roughly a 3rd apart.
+5. SHARPS/FLATS — for accidentals, choose the adjacent available note that best maintains the melodic direction.
+6. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When folding is unavoidable, prefer folding UP over DOWN.
+{style_block}
+
 Note sequence:
 {chr(10).join(note_lines)}
 
-Return ONLY a JSON array of replacements for UNMAPPED notes, like:
-[{{"time_ms": 1000, "original": 61, "replacement": 60}}, {{"time_ms": 2000, "original": 61, "replacement": 62}}]
+Your response MUST have exactly two sections with these headers:
 
-No explanation, just the JSON array."""
+## Analysis
+Briefly explain your arrangement strategy: how many notes are unmapped, which pitch ranges are affected, and your overall approach. Keep it concise (3-8 lines).
+
+## Mapping
+A JSON array of replacements for UNMAPPED notes, like:
+[{{"time_ms": 1000, "original": 61, "replacement": 60}}, {{"time_ms": 2000, "original": 61, "replacement": 62}}]{drop_hint}
+
+Nothing else after the JSON array."""
 
 
 def parse_context_response(response: str) -> list[PositionRemap]:
@@ -192,6 +254,51 @@ def parse_context_response(response: str) -> list[PositionRemap]:
 
 
 # ── Shared utilities ────────────────────────────────────────
+
+
+def parse_analysis_and_json(response: str) -> tuple[str, str]:
+    """Split AI response into (analysis_text, json_text).
+
+    Expects ## Analysis / ## Mapping headers. Falls back to extracting
+    JSON from the full response if headers are missing.
+    """
+    mapping_match = re.search(r"##\s*Mapping\s*\n", response, re.IGNORECASE)
+    if mapping_match:
+        analysis_match = re.search(r"##\s*Analysis\s*\n", response, re.IGNORECASE)
+        if analysis_match:
+            analysis_text = response[analysis_match.end():mapping_match.start()].strip()
+        else:
+            analysis_text = response[:mapping_match.start()].strip()
+        json_text = response[mapping_match.end():].strip()
+        return analysis_text, json_text
+
+    json_start = -1
+    for marker in ("[", "{"):
+        idx = response.find(marker)
+        if idx >= 0 and (json_start < 0 or idx < json_start):
+            json_start = idx
+    if json_start > 0:
+        return response[:json_start].strip(), response[json_start:].strip()
+
+    return "", response.strip()
+
+
+def build_retry_prompt(
+    original_prompt: str,
+    analysis: str,
+    user_feedback: str,
+) -> str:
+    """Build a retry prompt incorporating previous analysis and user feedback."""
+    return f"""{original_prompt}
+
+---
+PREVIOUS ATTEMPT — your earlier analysis was:
+{analysis}
+
+USER FEEDBACK — the user wants these adjustments:
+{user_feedback}
+
+Please revise your arrangement based on this feedback. Keep the same two-section format (## Analysis, ## Mapping)."""
 
 
 def _extract_clean_text(response: str) -> str:
@@ -330,6 +437,7 @@ def ai_arrange(
     base_url: str | None = None,
     model: str = "gpt-4o-mini",
     mode: str = "remap",
+    style: str = "conservative",
     on_chunk: StreamCallback | None = None,
 ) -> AiArrangeResult:
     available = _get_available_notes(mapping, profile_id)
@@ -357,28 +465,34 @@ def ai_arrange(
         )
 
     if mode == "context":
-        prompt = build_context_prompt(available, raw_events, shift, available_set)
+        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style)
         raw = call_openai(
             api_key, prompt, base_url=base_url, model=model,
             on_chunk=on_chunk, max_tokens=65536,
         )
-        position_map = parse_context_response(raw)
+        analysis_text, json_text = parse_analysis_and_json(raw)
+        position_map = parse_context_response(json_text) if json_text else []
         return AiArrangeResult(
             position_map=position_map,
             mode="context",
             explanation=raw,
+            analysis_text=analysis_text,
+            prompt=prompt,
             unmapped_count=len(unmapped_unique),
             total_notes=len(raw_events),
         )
 
-    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts)
+    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style)
     raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
-    note_map = parse_remap_response(raw)
+    analysis_text, json_text = parse_analysis_and_json(raw)
+    note_map = parse_remap_response(json_text) if json_text else {}
 
     return AiArrangeResult(
         note_map=note_map,
         mode="remap",
         explanation=raw,
+        analysis_text=analysis_text,
+        prompt=prompt,
         unmapped_count=len(unmapped_unique),
         total_notes=len(raw_events),
     )
