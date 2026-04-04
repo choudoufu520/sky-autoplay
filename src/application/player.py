@@ -14,6 +14,7 @@ CountdownCallback = Callable[[int], None]
 KeyDisplayCallback = Callable[[list[str], list[tuple[int, str]]], None]
 
 LOOKAHEAD_MS = 3000
+TAP_PRESS_MS = 30
 
 
 @dataclass(slots=True)
@@ -75,17 +76,6 @@ def play_chart(
         if _stopped():
             break
 
-        for idx, event in enumerate(events):
-            if _stopped():
-                break
-            if options.chord_stagger_ms > 0 and idx > 0:
-                time.sleep(options.chord_stagger_ms / 1000)
-            _dispatch_event(event, backend, pressed_keys, options.debug, _log)
-
-        if progress:
-            elapsed = int((time.perf_counter() - start) * 1000)
-            progress(gi + 1, total_groups, elapsed, total_ms)
-
         if key_display:
             current_keys = [e.key for e in events if e.action in ("tap", "down")]
             upcoming: list[tuple[int, str]] = []
@@ -98,6 +88,17 @@ def play_chart(
                     if fe.action in ("tap", "down"):
                         upcoming.append((offset, fe.key))
             key_display(current_keys, upcoming)
+
+        for idx, event in enumerate(events):
+            if _stopped():
+                break
+            if options.chord_stagger_ms > 0 and idx > 0:
+                time.sleep(options.chord_stagger_ms / 1000)
+            _dispatch_event(event, backend, pressed_keys, options.debug, _log)
+
+        if progress:
+            elapsed = int((time.perf_counter() - start) * 1000)
+            progress(gi + 1, total_groups, elapsed, total_ms)
 
     for key in list(pressed_keys):
         backend.key_up(key)
@@ -148,7 +149,7 @@ def _dispatch_event(
             print(msg)
 
     if event.action == "tap":
-        backend.tap(event.key, event.duration_ms or 30)
+        backend.tap(event.key, TAP_PRESS_MS)
         return
 
     if event.action == "down":
