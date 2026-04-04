@@ -118,7 +118,11 @@ def parse_remap_response(response: str) -> dict[int, int]:
     match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
     if match:
         text = match.group(0)
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        text = _repair_truncated_json(text)
+        data = json.loads(text)
     return {int(k): int(v) for k, v in data.items()}
 
 
@@ -160,9 +164,17 @@ def parse_context_response(response: str) -> list[PositionRemap]:
     match = re.search(r"\[.*\]", text, re.DOTALL)
     if match:
         text = match.group(0)
-    data = json.loads(text)
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        text = _repair_truncated_json(text)
+        data = json.loads(text)
     result: list[PositionRemap] = []
     for item in data:
+        if not isinstance(item, dict):
+            continue
+        if "time_ms" not in item or "original" not in item or "replacement" not in item:
+            continue
         result.append(PositionRemap(
             time_ms=int(item["time_ms"]),
             original=int(item["original"]),
@@ -187,6 +199,55 @@ def _extract_clean_text(response: str) -> str:
     return text
 
 
+def _repair_truncated_json(text: str) -> str:
+    """Attempt to repair JSON truncated mid-stream by closing open brackets."""
+    text = text.rstrip()
+    text = re.sub(r",\s*$", "", text)
+
+    stack: list[str] = []
+    in_string = False
+    escape = False
+    for ch in text:
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch in ("{", "["):
+            stack.append(ch)
+        elif ch == "}" and stack and stack[-1] == "{":
+            stack.pop()
+        elif ch == "]" and stack and stack[-1] == "[":
+            stack.pop()
+
+    last_complete = text
+    if stack:
+        top = stack[-1]
+        if top == "[":
+            last_obj = text.rfind("}")
+            last_bracket = text.rfind("]")
+            cut = max(last_obj, last_bracket)
+            if cut > 0:
+                last_complete = text[: cut + 1]
+        elif top == "{":
+            last_val_end = max(text.rfind('"'), text.rfind("}"), text.rfind("]"))
+            for i in range(last_val_end, -1, -1):
+                if text[i] in ('"', "}", "]") or text[i].isdigit():
+                    last_complete = text[: i + 1]
+                    break
+
+    for closer in reversed(stack):
+        last_complete += "]" if closer == "[" else "}"
+
+    return last_complete
+
+
 def _normalize_base_url(url: str) -> str:
     url = url.rstrip("/")
     if not url.endswith("/v1"):
@@ -203,6 +264,7 @@ def call_openai(
     base_url: str | None = None,
     model: str = "gpt-4o-mini",
     on_chunk: StreamCallback | None = None,
+    max_tokens: int = 16384,
 ) -> str:
     import httpx
     from openai import OpenAI
@@ -217,7 +279,7 @@ def call_openai(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.3,
-        max_tokens=4000,
+        max_tokens=max_tokens,
         stream=True,
     )
 
