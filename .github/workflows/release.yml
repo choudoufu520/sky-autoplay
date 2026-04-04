@@ -25,12 +25,6 @@ jobs:
           python-version: "3.11"
           cache: pip
 
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install ".[input,gui,ai]"
-          pip install pyinstaller
-
       - name: Stamp version from tag
         shell: pwsh
         run: |
@@ -45,6 +39,12 @@ jobs:
               Set-Content pyproject.toml
             Write-Host "Stamped version: $ver"
           }
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install ".[input,gui,ai]"
+          pip install pyinstaller
 
       - name: Build with PyInstaller
         run: pyinstaller --noconfirm --clean SkyMusicAutomation.spec
