@@ -175,6 +175,18 @@ class ConvertTab(QWidget):
         ai_row4.addWidget(self.ai_arrange_btn)
         ai_layout.addLayout(ai_row4)
 
+        ai_opt_row = QHBoxLayout()
+        self.ai_optimal_label = QLabel()
+        self.ai_optimal_label.setWordWrap(True)
+        self.ai_optimal_label.setOpenExternalLinks(True)
+        ai_opt_row.addWidget(self.ai_optimal_label, 1)
+        self.ai_optimal_apply_btn = QPushButton()
+        self.ai_optimal_apply_btn.setFixedWidth(60)
+        self.ai_optimal_apply_btn.setVisible(False)
+        self.ai_optimal_apply_btn.clicked.connect(self._apply_optimal_settings)
+        ai_opt_row.addWidget(self.ai_optimal_apply_btn)
+        ai_layout.addLayout(ai_opt_row)
+
         ai_status_row = QHBoxLayout()
         self.ai_status_label = QLabel()
         self.ai_status_label.setWordWrap(True)
@@ -249,6 +261,7 @@ class ConvertTab(QWidget):
         self._preview_midi_path: str | None = None
         self._ai_available_notes: list[int] = []
         self._ai_last_result: object | None = None
+        self._optimal_setting: object | None = None
 
         self._ai_timer = QTimer(self)
         self._ai_timer.setInterval(1000)
@@ -258,6 +271,10 @@ class ConvertTab(QWidget):
         self.single_track_combo.currentIndexChanged.connect(self._on_track_changed)
         self.mapping_edit.textChanged.connect(self._refresh_profiles)
         self._refresh_profiles()
+        self.transpose_spin.valueChanged.connect(self._refresh_optimal_hint)
+        self.octave_spin.valueChanged.connect(self._refresh_optimal_hint)
+        self.single_track_combo.currentIndexChanged.connect(self._refresh_optimal_hint)
+        self.mapping_edit.textChanged.connect(self._refresh_optimal_hint)
 
         on_language_changed(self.retranslate)
         self.retranslate()
@@ -312,6 +329,7 @@ class ConvertTab(QWidget):
         self.ai_arrange_btn.setText(tr("convert.ai_arrange"))
         self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
         self.ai_arrange_btn.setToolTip(tr("convert.ai_tip"))
+        self.ai_optimal_apply_btn.setText(tr("convert.ai_key_apply"))
         self.ai_copy_btn.setText(tr("convert.ai_copy"))
         self.ai_review_table.setHorizontalHeaderLabels([
             tr("convert.ai_review_original"),
@@ -332,6 +350,7 @@ class ConvertTab(QWidget):
         stem = Path(path).stem
         self.output_edit.setText(f"output/{stem}.json")
         self._refresh_track_list(path)
+        self._refresh_optimal_hint()
 
     def _refresh_track_list(self, path: str) -> None:
         self.single_track_combo.clear()
@@ -380,6 +399,95 @@ class ConvertTab(QWidget):
 
     def _apply_suggested_transpose(self) -> None:
         self.transpose_spin.setValue(self._suggested_transpose)
+
+    def _refresh_optimal_hint(self) -> None:
+        from src.application.ai_arranger import (
+            MUSIC_KEY_WIKI,
+            OptimalSetting,
+            find_optimal_settings,
+        )
+
+        midi_path = self._midi_path or self.midi_edit.text().strip()
+        mapping_path = self.mapping_edit.text().strip()
+        if not midi_path or not mapping_path or not Path(midi_path).exists() or not Path(mapping_path).exists():
+            self.ai_optimal_label.clear()
+            self.ai_optimal_apply_btn.setVisible(False)
+            self._optimal_setting = None
+            return
+
+        try:
+            mapping_config = load_mapping(Path(mapping_path))
+        except Exception:
+            self.ai_optimal_label.clear()
+            self.ai_optimal_apply_btn.setVisible(False)
+            self._optimal_setting = None
+            return
+
+        profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
+        single_track_val = self.single_track_combo.currentData()
+
+        try:
+            results = find_optimal_settings(
+                Path(midi_path), mapping_config, profile, single_track=single_track_val,
+            )
+        except Exception:
+            self.ai_optimal_label.clear()
+            self.ai_optimal_apply_btn.setVisible(False)
+            self._optimal_setting = None
+            return
+
+        if not results:
+            self.ai_optimal_label.clear()
+            self.ai_optimal_apply_btn.setVisible(False)
+            self._optimal_setting = None
+            return
+
+        cur_transpose = self.transpose_spin.value()
+        cur_octave = self.octave_spin.value()
+        current = next(
+            (r for r in results if r.transpose == cur_transpose and r.octave == cur_octave),
+            None,
+        )
+        best = results[0]
+
+        if current is None:
+            current_count = best.unmapped_count
+        else:
+            current_count = current.unmapped_count
+
+        if best.transpose == cur_transpose and best.octave == cur_octave:
+            self.ai_optimal_label.setText(tr("convert.ai_key_optimal"))
+            self.ai_optimal_apply_btn.setVisible(False)
+            self._optimal_setting = None
+            return
+
+        instr_short = best.instruments[0].split("/")[0] if best.instruments else ""
+        self._optimal_setting = best
+        self.ai_optimal_label.setText(
+            tr("convert.ai_key_hint").format(
+                current_count=current_count,
+                val=f"{best.transpose:+d}",
+                octave=f"{best.octave:+d}",
+                key=best.key_name,
+                instrument=instr_short,
+                best_count=best.unmapped_count,
+                wiki=MUSIC_KEY_WIKI,
+            )
+        )
+        self.ai_optimal_apply_btn.setVisible(True)
+
+    def _apply_optimal_settings(self) -> None:
+        from src.application.ai_arranger import OptimalSetting
+
+        if not isinstance(self._optimal_setting, OptimalSetting):
+            return
+        self.transpose_spin.blockSignals(True)
+        self.octave_spin.blockSignals(True)
+        self.transpose_spin.setValue(self._optimal_setting.transpose)
+        self.octave_spin.setValue(self._optimal_setting.octave)
+        self.transpose_spin.blockSignals(False)
+        self.octave_spin.blockSignals(False)
+        self._refresh_optimal_hint()
 
     def _browse_midi(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("convert.dialog_midi"), "", "MIDI Files (*.mid *.midi)")

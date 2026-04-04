@@ -131,6 +131,9 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_applied_direct": "Applied {count} mapping(s) from review table",
         "convert.ai_preview": "Preview",
         "convert.ai_preview_err": "Preview failed: {err}",
+        "convert.ai_key_hint": 'Current: {current_count} unmapped | Best: transpose {val}, octave {octave} ({key}, {instrument}) = {best_count} unmapped. <a href="{wiki}">Key guide</a>',
+        "convert.ai_key_apply": "Apply",
+        "convert.ai_key_optimal": "Current transpose/octave is already optimal",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI:",
@@ -352,6 +355,9 @@ _T: dict[str, dict[str, str]] = {
         "convert.ai_applied_direct": "已从审阅表应用 {count} 条映射",
         "convert.ai_preview": "试听预览",
         "convert.ai_preview_err": "预览失败：{err}",
+        "convert.ai_key_hint": '当前: {current_count} 个未映射 | 建议: 移调 {val}，八度 {octave} ({key}，{instrument}) = {best_count} 个未映射。<a href="{wiki}">调式指南</a>',
+        "convert.ai_key_apply": "应用",
+        "convert.ai_key_optimal": "当前移调/八度已是最优",
 
         # ── PreviewTab ──
         "preview.midi": "MIDI：",

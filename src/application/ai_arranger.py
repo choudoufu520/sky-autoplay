@@ -12,10 +12,36 @@ from src.infrastructure.midi_reader import MidiMeta, RawMidiEvent, read_midi_eve
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+_KEY_NAMES = ["C", "Db", "D", "Eb", "E", "F", "F#/Gb", "G", "Ab", "A", "Bb", "B"]
+
+INSTRUMENT_GROUPS: dict[int, list[str]] = {
+    0:  ["钢琴/Piano", "长笛/Flute", "排箫/Panflute", "卡林巴/Kalimba",
+         "军号/Bugle", "陶笛/Ocarina", "口琴/Harmonica", "小提琴/Violin"],
+    1:  ["冬季钢琴/Winter Piano", "木琴/Xylophone"],
+    -1: ["竖琴/Harp", "吉他/Guitar", "尤克里里/Ukulele",
+         "鲁特琴/Lute", "电吉他/Electric Guitar", "萨克斯/Saxophone"],
+    -2: ["号角/Horn", "大提琴/Cello"],
+    -3: ["低音提琴/Contrabass"],
+}
+
+MUSIC_KEY_WIKI = "https://sky-children-of-the-light.fandom.com/wiki/Music_Key"
 
 
 def _midi_to_name(n: int) -> str:
     return f"{_PITCH_CLASSES[n % 12]}{n // 12 - 1}"
+
+
+def _detect_scale_key(available: list[int]) -> str:
+    if not available:
+        return "C major"
+    root_pc = available[0] % 12
+    return f"{_KEY_NAMES[root_pc]} major"
+
+
+def _transpose_to_key_name(transpose: int) -> str:
+    """Map a transpose offset to the in-game instrument key name."""
+    root_pc = (0 - transpose) % 12
+    return f"{_KEY_NAMES[root_pc]} major"
 
 
 @dataclass(slots=True)
@@ -84,6 +110,55 @@ def analyze_unmapped_notes(
     return available, unmapped, unmapped_counts
 
 
+@dataclass(slots=True)
+class OptimalSetting:
+    transpose: int
+    octave: int
+    key_name: str
+    unmapped_count: int
+    instruments: list[str]
+
+
+def find_optimal_settings(
+    midi_path: Path,
+    mapping: MappingConfig,
+    profile_id: str,
+    single_track: int | None = None,
+) -> list[OptimalSetting]:
+    """Search all transpose (-6..+5) x octave offset (-3..+1) combinations.
+
+    Returns results sorted by unmapped_count ascending (best first).
+    """
+    available = _get_available_notes(mapping, profile_id)
+    if not available:
+        return []
+
+    available_set = set(available)
+    raw_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    if not raw_events:
+        return []
+
+    results: list[OptimalSetting] = []
+    for oct_offset in sorted(INSTRUMENT_GROUPS.keys()):
+        instruments = INSTRUMENT_GROUPS[oct_offset]
+        for t in range(-6, 6):
+            shift = _get_shift(mapping, profile_id, t, oct_offset)
+            unmapped = 0
+            for ev in raw_events:
+                if (ev.note + shift) not in available_set:
+                    unmapped += 1
+            key_name = _transpose_to_key_name(t)
+            results.append(OptimalSetting(
+                transpose=t,
+                octave=oct_offset,
+                key_name=key_name,
+                unmapped_count=unmapped,
+                instruments=instruments,
+            ))
+    results.sort(key=lambda s: s.unmapped_count)
+    return results
+
+
 # ── Remap mode ──────────────────────────────────────────────
 
 
@@ -129,6 +204,7 @@ def build_remap_prompt(
     style: str = "conservative",
     filename: str = "",
     meta: MidiMeta | None = None,
+    optimal_hint: str = "",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
     unmapped_lines = []
@@ -137,6 +213,7 @@ def build_remap_prompt(
 
     avail_min = min(available)
     avail_max = max(available)
+    scale_key = _detect_scale_key(available)
     style_block = _STYLE_INSTRUCTIONS.get(style, "")
 
     drop_hint = ""
@@ -157,7 +234,9 @@ def build_remap_prompt(
 An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
-
+These notes form a {scale_key} scale spanning 2 octaves.
+Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
+{optimal_hint}
 The following MIDI notes from the original piece cannot be played on this instrument:
 {chr(10).join(unmapped_lines)}
 {high_freq_hint}
@@ -169,10 +248,17 @@ For each unmapped note, suggest which available note should replace it.
 3. SHARPS/FLATS — for accidentals (C#, Eb), prefer the adjacent natural note that fits the musical context (half-step toward the key center).
 4. PRESERVE EMOTION — high notes carry tension/brightness; do NOT fold them down. Low notes carry depth; do NOT fold them up. Keep the emotional register.
 5. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, fold UP rather than DOWN.
+6. VOICE LEADING — if two unmapped notes are close in pitch (within 4 semitones), their replacements should also be close, preserving the relative spacing.
 
 === FORBIDDEN ===
 - Do NOT map two different adjacent unmapped notes to the same replacement. Each distinct original pitch should get a distinct replacement when possible.
 - Do NOT create semitone clusters: if two unmapped notes are next to each other (e.g. 61 and 63), their replacements must not be adjacent semitones (e.g. both mapping to 60).
+
+=== EXAMPLE (good vs. bad) ===
+Unmapped: 61(C#4), 63(D#4).  Available: [..., 60(C4), 62(D4), 64(E4), ...]
+GOOD: {{"61": 62, "63": 64}} — each gets a distinct nearby replacement, spacing preserved.
+BAD:  {{"61": 60, "63": 60}} — two different notes mapped to same replacement, destroys detail.
+BAD:  {{"61": 60, "63": 62}} — both shifted down, but 60 and 62 lose the half-step tension of 61 vs 63.
 {style_block}
 Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
 
@@ -279,6 +365,7 @@ def build_context_prompt(
     style: str = "conservative",
     filename: str = "",
     meta: MidiMeta | None = None,
+    optimal_hint: str = "",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
@@ -287,6 +374,7 @@ def build_context_prompt(
 
     avail_min = min(available)
     avail_max = max(available)
+    scale_key = _detect_scale_key(available)
     style_block = _STYLE_INSTRUCTIONS.get(style, "")
 
     drop_hint = ""
@@ -300,7 +388,9 @@ def build_context_prompt(
 An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min}({_midi_to_name(avail_min)}) ~ {avail_max}({_midi_to_name(avail_max)})
-
+These notes form a {scale_key} scale spanning 2 octaves.
+Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
+{optimal_hint}
 Below is the note sequence from a MIDI track, grouped by simultaneous notes and organized by bar.
 - Notes marked [UNMAPPED] cannot be played on this instrument and need replacements.
 - Notes marked [MELODY] are the highest note in each group (typically the melody voice).
@@ -314,17 +404,26 @@ These carry the main tune the listener hears. Treat with highest care:
 2. PRESERVE REGISTER — replacement must be as close to the original pitch as possible. NEVER move a melody note down by more than one octave.
 3. PRESERVE INTERVALS — maintain the relative distance between consecutive melody notes. A 3rd should stay roughly a 3rd.
 4. NO CONSECUTIVE DUPLICATES — do not map two originally different consecutive melody notes to the same replacement (unless the original already repeated).
+5. INTERVAL LIMIT — the interval between two consecutive melody replacements should not deviate from the original interval by more than 3 semitones. Example: original melody goes up 4 semitones (M3), replacement should go up 1-7 semitones. Never invert the direction.
 
 === ACCOMPANIMENT / CHORD NOTES ===
 These provide harmonic support. More flexibility allowed:
 1. KEEP CHORD FUNCTION — prefer notes that preserve the chord quality (root, 3rd, 5th).
 2. AVOID CLASHES — within the same group, do not create adjacent semitones (e.g. C and C#) in the replacements.
 3. SIMPLIFICATION OK — if a chord has too many unmapped notes, it is better to keep root + one color tone than to force all notes into awkward positions.
+4. VOICE LEADING — when the same chord voice appears in consecutive groups, prefer the replacement closest to the previous group's replacement for that voice. Minimize total pitch movement of inner voices between consecutive chords.
 
 === GENERAL RULES ===
 1. SHARPS/FLATS — for accidentals (C#, Eb, etc.), prefer the adjacent natural note in the direction of the melody movement.
 2. MINIMIZE OCTAVE FOLDING — only fold as a last resort. When unavoidable, prefer folding UP over DOWN.
 3. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry warmth/depth. Do not systematically flatten the pitch range.
+
+=== EXAMPLE (good vs. bad) ===
+Original melody: 67(G4) -> 69(A4) -> 73(C#5)   (intervals: up 2, up 4)
+Available: [60,62,64,65,67,69,71,72,74,76,77,79,81,83,84]
+GOOD: 67 -> 69 -> 74    (up 2, up 5 — direction and rough interval preserved)
+BAD:  67 -> 69 -> 64    (up 2, DOWN 5 — direction inverted, destroys melodic contour)
+BAD:  67 -> 69 -> 69    (up 2, +0   — consecutive duplicates, melody stalls)
 {style_block}
 
 Note sequence:
@@ -591,8 +690,26 @@ def ai_arrange(
     midi_filename = midi_path.stem
     meta = read_midi_meta(midi_path, single_track=single_track)
 
+    optimal_hint = ""
+    try:
+        opts = find_optimal_settings(midi_path, mapping, profile_id, single_track=single_track)
+        if opts:
+            best = opts[0]
+            current_unmapped = total_unmapped
+            if best.unmapped_count < current_unmapped * 0.7:
+                instr = best.instruments[0].split("/")[0] if best.instruments else ""
+                optimal_hint = (
+                    f"\nNOTE: The user's current settings produce {current_unmapped} unmapped note events. "
+                    f"An alternative — transpose {best.transpose:+d} with octave {best.octave:+d} "
+                    f"(instrument key: {best.key_name}, instrument: {instr}) — "
+                    f"would reduce unmapped events to {best.unmapped_count}. "
+                    f"You may mention this in your Analysis if the difference is significant.\n"
+                )
+    except Exception:
+        pass
+
     if mode == "context":
-        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta)
+        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint)
         raw = call_openai(
             api_key, prompt, base_url=base_url, model=model,
             on_chunk=on_chunk, max_tokens=65536,
@@ -609,7 +726,7 @@ def ai_arrange(
             total_notes=len(raw_events),
         )
 
-    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta)
+    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint)
     raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
     analysis_text, json_text = parse_analysis_and_json(raw)
     note_map = parse_remap_response(json_text) if json_text else {}
