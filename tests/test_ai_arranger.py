@@ -5,11 +5,17 @@ import pytest
 import src.application.ai_arranger as ai_arranger
 from src.application.ai_arranger import (
     PositionRemap,
+    _count_total_bars,
     _enforce_context_rules,
     _extract_balanced,
+    _format_stream_progress_text,
     _midi_to_name,
     _repair_truncated_json,
+    _requires_context_chunking,
+    _requires_context_chunking_by_bars,
     _split_events_into_chunks,
+    ai_arrange,
+    find_optimal_settings,
     get_arrange_precheck,
     parse_analysis_and_json,
     parse_ai_response,
@@ -163,6 +169,18 @@ class TestRepairTruncatedJson:
         assert _repair_truncated_json(text) == text
 
 
+class TestStreamProgress:
+    def test_waiting_for_first_token_message(self):
+        assert _format_stream_progress_text("", 10, waiting_for_first_token=True) == (
+            "[Waiting for AI response... 10s]"
+        )
+
+    def test_waiting_for_next_token_message(self):
+        text = _format_stream_progress_text("## Analysis\nWorking", 12, waiting_for_first_token=False)
+        assert text.startswith("## Analysis\nWorking")
+        assert text.endswith("[Streaming paused... 12s since last update]")
+
+
 class TestValidateNoteMap:
     def test_all_valid(self):
         available = [60, 62, 64, 65, 67]
@@ -263,8 +281,161 @@ class TestArrangePrecheck:
         assert precheck.likely_key == "D minor"
         assert precheck.estimated_tokens > 0
 
+    def test_context_precheck_chunks_when_bar_count_is_large(self, monkeypatch, tmp_path):
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "long.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
+            for i in range(60)
+        ]
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger,
+            "read_midi_meta",
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
+
+        precheck = get_arrange_precheck(
+            midi_path,
+            mapping,
+            "default",
+            mode="context",
+        )
+
+        assert precheck.estimated_tokens < 24_000
+        assert precheck.requires_chunking is True
+
+    def test_context_precheck_uses_chunk_sample_for_long_song(self, monkeypatch, tmp_path):
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "long.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
+            for i in range(60)
+        ]
+        seen_lengths: list[int] = []
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger,
+            "read_midi_meta",
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
+
+        def _fake_build_context_prompt(available, prompt_events, *args, **kwargs):
+            seen_lengths.append(len(prompt_events))
+            return "chunk prompt"
+
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", _fake_build_context_prompt)
+
+        precheck = get_arrange_precheck(midi_path, mapping, "default", mode="context")
+
+        assert precheck.requires_chunking is True
+        assert seen_lengths
+        assert max(seen_lengths) < len(events)
+
+    def test_find_optimal_settings_respects_cancel(self, monkeypatch, tmp_path):
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "demo.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 100, note=60 + (i % 5), duration_ms=200, velocity=80, program=None)
+            for i in range(32)
+        ]
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
+
+        calls = {"count": 0}
+
+        def _should_cancel() -> bool:
+            calls["count"] += 1
+            return calls["count"] >= 2
+
+        with pytest.raises(ai_arranger.AiArrangeCancelled):
+            find_optimal_settings(
+                midi_path,
+                mapping,
+                "default",
+                should_cancel=_should_cancel,
+            )
+
 
 class TestChunkingAndContextRules:
+    def test_requires_context_chunking_for_long_bar_count(self):
+        meta = MidiMeta(bpm=120.0, time_signature="4/4")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
+            for i in range(60)
+        ]
+
+        assert _count_total_bars(events, meta) == 60
+        assert _requires_context_chunking_by_bars(events, meta) is True
+        assert _requires_context_chunking(events, meta, estimated_tokens=1000) is True
+
+    def test_ai_arrange_skips_optimal_scan_before_chunked_requests(self, monkeypatch, tmp_path):
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "long.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=61, duration_ms=300, velocity=80, program=None)
+            for i in range(60)
+        ]
+        calls: list[str] = []
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger,
+            "read_midi_meta",
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
+
+        def _fake_find_optimal_settings(*args, **kwargs):
+            calls.append("optimize")
+            raise AssertionError("chunked path should skip optimal scan")
+
+        monkeypatch.setattr(ai_arranger, "find_optimal_settings", _fake_find_optimal_settings)
+
+        def _fake_build_context_prompt(available, prompt_events, *args, **kwargs):
+            calls.append(f"prompt:{len(prompt_events)}")
+            return "context prompt"
+
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", _fake_build_context_prompt)
+
+        def _fake_call_openai(*args, **kwargs):
+            calls.append("request")
+            return '## Analysis\nok\n\n## Mapping\n[{"time_ms": 0, "original": 61, "replacement": 60}]'
+
+        monkeypatch.setattr(ai_arranger, "call_openai", _fake_call_openai)
+
+        result = ai_arrange(
+            midi_path,
+            mapping,
+            "default",
+            api_key="test-key",
+            mode="context",
+        )
+
+        assert "optimize" not in calls
+        assert "request" in calls
+        assert result.mode == "context"
+
     def test_split_events_prefers_phrase_boundary(self):
         meta = MidiMeta(bpm=120.0, time_signature="4/4")
         events = [
@@ -281,6 +452,19 @@ class TestChunkingAndContextRules:
         assert len(chunks) >= 2
         assert chunks[0][-1].time_ms == 1900
         assert chunks[1][0].time_ms == 4100
+
+    def test_split_events_with_overlap_does_not_loop_forever(self):
+        meta = MidiMeta(bpm=120.0, time_signature="4/4")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
+            for i in range(60)
+        ]
+
+        chunks = _split_events_into_chunks(events, meta, bars_per_chunk=50, overlap_bars=2)
+
+        assert len(chunks) == 2
+        assert chunks[0][0].time_ms == 0
+        assert chunks[-1][-1].time_ms == events[-1].time_ms
 
     def test_enforce_context_rules_preserves_melody_direction(self):
         events = [

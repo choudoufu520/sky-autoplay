@@ -4,6 +4,7 @@ from collections import Counter
 from datetime import datetime
 import logging
 from pathlib import Path
+import re
 
 from PySide6.QtCore import QSettings, Qt, QThread, QTimer, Signal
 from PySide6.QtGui import QStandardItem, QStandardItemModel
@@ -407,9 +408,13 @@ class ConvertTab(QWidget):
         self._ai_timer.setInterval(1000)
         self._ai_timer.timeout.connect(self._tick_ai_timer)
         self._ai_elapsed = 0
+        self._ai_cancelling = False
 
         self._ai_chunk_buffer: str = ""
         self._ai_chunk_dirty = False
+        self._ai_chunk_status: tuple[int, int] | None = None
+        self._ai_stream_state: tuple[str, int] | None = None
+        self._ai_stage_state: tuple[str, int | None] | None = None
         self._ai_chunk_timer = QTimer(self)
         self._ai_chunk_timer.setInterval(100)
         self._ai_chunk_timer.timeout.connect(self._flush_chunk_buffer)
@@ -839,6 +844,7 @@ class ConvertTab(QWidget):
         self.ai_arrange_btn.setVisible(False)
         self.ai_cancel_btn.setVisible(True)
         self.ai_cancel_btn.setEnabled(True)
+        self._ai_cancelling = False
         self._ai_elapsed = 0
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
         self._ai_timer.start()
@@ -864,6 +870,9 @@ class ConvertTab(QWidget):
         self.result_text.clear()
         self._ai_chunk_buffer = ""
         self._ai_chunk_dirty = False
+        self._ai_chunk_status = None
+        self._ai_stream_state = None
+        self._ai_stage_state = None
         self._ai_chunk_timer.start()
         self._ai_worker.start()
 
@@ -875,6 +884,10 @@ class ConvertTab(QWidget):
         self._flush_chunk_buffer()
         self.ai_copy_btn.setVisible(False)
         self.ai_cancel_btn.setText(tr("convert.ai_cancel"))
+        self._ai_cancelling = False
+        self._ai_chunk_status = None
+        self._ai_stream_state = None
+        self._ai_stage_state = None
         self._ai_worker = None
         if not isinstance(result, AiArrangeResult):
             self.ai_arrange_btn.setEnabled(True)
@@ -901,18 +914,142 @@ class ConvertTab(QWidget):
     def _on_ai_chunk(self, accumulated: str) -> None:
         self._ai_chunk_buffer = accumulated
         self._ai_chunk_dirty = True
+        self._update_ai_chunk_status(accumulated)
+
+    def _update_ai_chunk_status(self, accumulated: str) -> None:
+        stage_match = re.findall(r"\[Stage ([a-z_]+)(?: total=(\d+))?\]", accumulated)
+        if stage_match:
+            stage_name, total = stage_match[-1]
+            self._ai_stage_state = (stage_name, int(total) if total else None)
+
+        chunk_matches = re.findall(r"\[Chunk (\d+)/(\d+)\]", accumulated)
+        if chunk_matches:
+            current, total = chunk_matches[-1]
+            self._ai_chunk_status = (int(current), int(total))
+        else:
+            self._ai_chunk_status = None
+
+        if self._ai_cancelling:
+            self.ai_status_label.setText(tr("convert.ai_cancelling"))
+            return
+
+        wait_match = re.search(r"\[Waiting for AI response\.\.\. (\d+)s\]", accumulated)
+        if wait_match:
+            wait_sec = int(wait_match.group(1))
+            self._ai_stream_state = ("waiting", wait_sec)
+            if self._ai_chunk_status:
+                self.ai_status_label.setText(
+                    tr("convert.ai_chunk_waiting").format(
+                        current=self._ai_chunk_status[0],
+                        total=self._ai_chunk_status[1],
+                        sec=wait_sec,
+                    )
+                )
+            else:
+                self.ai_status_label.setText(tr("convert.ai_waiting").format(sec=wait_sec))
+            return
+
+        pause_match = re.search(r"\[Streaming paused\.\.\. (\d+)s since last update\]", accumulated)
+        if pause_match:
+            pause_sec = int(pause_match.group(1))
+            self._ai_stream_state = ("paused", pause_sec)
+            if self._ai_chunk_status:
+                self.ai_status_label.setText(
+                    tr("convert.ai_chunk_paused").format(
+                        current=self._ai_chunk_status[0],
+                        total=self._ai_chunk_status[1],
+                        sec=pause_sec,
+                    )
+                )
+            else:
+                self.ai_status_label.setText(tr("convert.ai_paused").format(sec=pause_sec))
+            return
+
+        self._ai_stream_state = None
+        if self._ai_chunk_status:
+            self.ai_status_label.setText(
+                tr("convert.ai_chunk_working").format(
+                    current=self._ai_chunk_status[0],
+                    total=self._ai_chunk_status[1],
+                    sec=self._ai_elapsed,
+                )
+            )
+            return
+        if self._ai_stage_state:
+            stage_name, total = self._ai_stage_state
+            if stage_name == "analyze_key":
+                self.ai_status_label.setText(tr("convert.ai_stage_analyze_key").format(sec=self._ai_elapsed))
+            elif stage_name == "optimize":
+                self.ai_status_label.setText(tr("convert.ai_stage_optimize").format(sec=self._ai_elapsed))
+            elif stage_name == "build_prompt":
+                self.ai_status_label.setText(tr("convert.ai_stage_build_prompt").format(sec=self._ai_elapsed))
+            elif stage_name == "split_chunks":
+                self.ai_status_label.setText(
+                    tr("convert.ai_stage_split_chunks").format(total=total or 0, sec=self._ai_elapsed)
+                )
 
     def _flush_chunk_buffer(self) -> None:
         if not self._ai_chunk_dirty:
             return
         self._ai_chunk_dirty = False
-        self.result_text.setPlainText(self._ai_chunk_buffer)
+        display_text = re.sub(r"(?m)^\[Stage [^\]]+\]\s*\n?", "", self._ai_chunk_buffer).strip()
+        self.result_text.setPlainText(display_text)
         scrollbar = self.result_text.verticalScrollBar()
         if scrollbar:
             scrollbar.setValue(scrollbar.maximum())
 
     def _tick_ai_timer(self) -> None:
         self._ai_elapsed += 1
+        if self._ai_cancelling:
+            self.ai_status_label.setText(tr("convert.ai_cancelling"))
+            return
+        if self._ai_stream_state:
+            state, sec = self._ai_stream_state
+            if self._ai_chunk_status:
+                if state == "waiting":
+                    self.ai_status_label.setText(
+                        tr("convert.ai_chunk_waiting").format(
+                            current=self._ai_chunk_status[0],
+                            total=self._ai_chunk_status[1],
+                            sec=sec,
+                        )
+                    )
+                else:
+                    self.ai_status_label.setText(
+                        tr("convert.ai_chunk_paused").format(
+                            current=self._ai_chunk_status[0],
+                            total=self._ai_chunk_status[1],
+                            sec=sec,
+                        )
+                    )
+            else:
+                if state == "waiting":
+                    self.ai_status_label.setText(tr("convert.ai_waiting").format(sec=sec))
+                else:
+                    self.ai_status_label.setText(tr("convert.ai_paused").format(sec=sec))
+            return
+        if self._ai_chunk_status:
+            self.ai_status_label.setText(
+                tr("convert.ai_chunk_working").format(
+                    current=self._ai_chunk_status[0],
+                    total=self._ai_chunk_status[1],
+                    sec=self._ai_elapsed,
+                )
+            )
+            return
+        if self._ai_stage_state:
+            stage_name, total = self._ai_stage_state
+            if stage_name == "analyze_key":
+                self.ai_status_label.setText(tr("convert.ai_stage_analyze_key").format(sec=self._ai_elapsed))
+            elif stage_name == "optimize":
+                self.ai_status_label.setText(tr("convert.ai_stage_optimize").format(sec=self._ai_elapsed))
+            elif stage_name == "build_prompt":
+                self.ai_status_label.setText(tr("convert.ai_stage_build_prompt").format(sec=self._ai_elapsed))
+            elif stage_name == "split_chunks":
+                self.ai_status_label.setText(
+                    tr("convert.ai_stage_split_chunks").format(total=total or 0, sec=self._ai_elapsed)
+                )
+            return
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=self._ai_elapsed))
 
     def _on_ai_error(self, msg: str) -> None:
@@ -921,6 +1058,10 @@ class ConvertTab(QWidget):
         self._ai_timer.stop()
         self._ai_chunk_timer.stop()
         elapsed = self._ai_elapsed
+        self._ai_cancelling = False
+        self._ai_chunk_status = None
+        self._ai_stream_state = None
+        self._ai_stage_state = None
         self.ai_arrange_btn.setVisible(True)
         self.ai_arrange_btn.setEnabled(True)
         self.ai_cancel_btn.setVisible(False)
@@ -972,6 +1113,10 @@ class ConvertTab(QWidget):
         self.ai_cancel_btn.setVisible(False)
         self.ai_arrange_btn.setVisible(True)
         self.ai_arrange_btn.setEnabled(True)
+        self._ai_cancelling = False
+        self._ai_chunk_status = None
+        self._ai_stream_state = None
+        self._ai_stage_state = None
         self._ai_last_result = None
         self.ai_status_label.clear()
         self.convert_btn.setVisible(not self.ai_group.isChecked())
@@ -979,6 +1124,7 @@ class ConvertTab(QWidget):
     def _handle_ai_cancel(self) -> None:
         worker = self._ai_worker
         if worker is not None and worker.isRunning():
+            self._ai_cancelling = True
             self.ai_cancel_btn.setEnabled(False)
             self.ai_status_label.setText(tr("convert.ai_cancelling"))
             try:
@@ -1239,6 +1385,7 @@ class ConvertTab(QWidget):
         self.ai_arrange_btn.setVisible(False)
         self.ai_cancel_btn.setVisible(True)
         self.ai_cancel_btn.setEnabled(True)
+        self._ai_cancelling = False
         self._ai_elapsed = 0
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
         self._ai_timer.start()
@@ -1260,6 +1407,9 @@ class ConvertTab(QWidget):
         self.result_text.clear()
         self._ai_chunk_buffer = ""
         self._ai_chunk_dirty = False
+        self._ai_chunk_status = None
+        self._ai_stream_state = None
+        self._ai_stage_state = None
         self._ai_chunk_timer.start()
         self._ai_worker.start()
 

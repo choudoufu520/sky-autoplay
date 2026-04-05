@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import queue as _queue
 import re
 import threading
 from collections import Counter
@@ -175,11 +176,13 @@ def find_optimal_settings(
     mapping: MappingConfig,
     profile_id: str,
     tracks: list[int] | None = None,
+    should_cancel: CancelCallback | None = None,
 ) -> list[OptimalSetting]:
     """Search all transpose (-6..+5) x octave offset (-3..+1) combinations.
 
     Returns results sorted by unmapped_count ascending (best first).
     """
+    _raise_if_cancelled(should_cancel)
     available = _get_available_notes(mapping, profile_id)
     if not available:
         return []
@@ -191,11 +194,15 @@ def find_optimal_settings(
 
     results: list[OptimalSetting] = []
     for oct_offset in sorted(INSTRUMENT_GROUPS.keys()):
+        _raise_if_cancelled(should_cancel)
         instruments = INSTRUMENT_GROUPS[oct_offset]
         for t in range(-6, 6):
+            _raise_if_cancelled(should_cancel)
             shift = _get_shift(mapping, profile_id, t, oct_offset)
             unmapped = 0
-            for ev in raw_events:
+            for idx, ev in enumerate(raw_events):
+                if idx % 256 == 0:
+                    _raise_if_cancelled(should_cancel)
                 if (ev.note + shift) not in available_set:
                     unmapped += 1
             key_name = _transpose_to_key_name(t)
@@ -910,6 +917,28 @@ def get_arrange_precheck(
     events, _, _ = read_midi_events(midi_path, tracks=tracks)
     meta = read_midi_meta(midi_path, tracks=tracks)
     key_analysis = analyze_midi_key(midi_path, tracks=tracks)
+    if _requires_context_chunking_by_bars(events, meta):
+        chunks = _split_events_into_chunks(events, meta)
+        sample_events = max(chunks, key=len) if chunks else events
+        prompt = build_context_prompt(
+            available,
+            sample_events,
+            shift,
+            set(available),
+            style=style,
+            filename=midi_path.stem,
+            meta=meta,
+            key_analysis=key_analysis,
+            simplify=simplify,
+        )
+        estimated = _estimate_tokens(prompt) * max(len(chunks), 1)
+        return ArrangePrecheck(
+            available_notes=available,
+            shift=shift,
+            estimated_tokens=estimated,
+            requires_chunking=True,
+            likely_key=_detect_scale_key(available, key_analysis),
+        )
     prompt = build_context_prompt(
         available,
         events,
@@ -926,7 +955,7 @@ def get_arrange_precheck(
         available_notes=available,
         shift=shift,
         estimated_tokens=estimated,
-        requires_chunking=estimated > _CONTEXT_TOKEN_THRESHOLD,
+        requires_chunking=_requires_context_chunking(events, meta, estimated),
         likely_key=_detect_scale_key(available, key_analysis),
     )
 
@@ -940,6 +969,30 @@ def _get_bar_ms(meta: MidiMeta | None) -> float:
             beats = 4
         return (60_000 / meta.bpm) * beats
     return 2000.0
+
+
+def _count_total_bars(events: list[RawMidiEvent], meta: MidiMeta | None) -> int:
+    if not events:
+        return 0
+    bar_ms = _get_bar_ms(meta)
+    return int(events[-1].time_ms / bar_ms) + 1
+
+
+def _requires_context_chunking(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+    estimated_tokens: int,
+) -> bool:
+    if estimated_tokens > _CONTEXT_TOKEN_THRESHOLD:
+        return True
+    return _count_total_bars(events, meta) > _BARS_PER_CHUNK
+
+
+def _requires_context_chunking_by_bars(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+) -> bool:
+    return _count_total_bars(events, meta) > _BARS_PER_CHUNK
 
 
 def _find_phrase_boundary(events: list[RawMidiEvent], target_ms: float, bar_ms: float) -> float:
@@ -982,18 +1035,29 @@ def _split_events_into_chunks(
     while bar_start < total_bars:
         bar_end = min(bar_start + bars_per_chunk, total_bars)
         t_start = bar_start * bar_ms
-        t_end = _find_phrase_boundary(events, bar_end * bar_ms, bar_ms)
+        if bar_end >= total_bars:
+            t_end = events[-1].time_ms + 1
+        else:
+            t_end = _find_phrase_boundary(events, bar_end * bar_ms, bar_ms)
         chunk = [ev for ev in events if t_start <= ev.time_ms < t_end]
         if chunk:
             chunks.append(chunk)
-        bar_start = bar_end - overlap_bars
-        if bar_start >= total_bars:
+        if bar_end >= total_bars:
             break
+        next_bar_start = bar_end - overlap_bars
+        if next_bar_start <= bar_start:
+            next_bar_start = bar_end
+        bar_start = next_bar_start
     return chunks
 
 
 StreamCallback = Callable[[str], None]
 CancelCallback = Callable[[], bool]
+
+
+def _emit_progress(on_chunk: StreamCallback | None, message: str) -> None:
+    if on_chunk:
+        on_chunk(message)
 
 
 class CancellableState:
@@ -1053,6 +1117,7 @@ class CancellableState:
 
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 2.0
+_STREAM_PROGRESS_INTERVAL = 5.0
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -1097,6 +1162,17 @@ def _sleep_with_cancel(delay: float, should_cancel: CancelCallback | None) -> No
         time.sleep(min(0.2, remaining))
 
 
+def _format_stream_progress_text(
+    accumulated: str,
+    wait_sec: int,
+    *,
+    waiting_for_first_token: bool,
+) -> str:
+    if waiting_for_first_token:
+        return f"[Waiting for AI response... {wait_sec}s]"
+    return f"{accumulated}\n\n[Streaming paused... {wait_sec}s since last update]"
+
+
 def call_openai(
     api_key: str,
     prompt: str,
@@ -1107,18 +1183,18 @@ def call_openai(
     should_cancel: CancelCallback | None = None,
     cancel_state: CancellableState | None = None,
 ) -> str:
+    """Call OpenAI-compatible API with streaming.
+
+    Uses a daemon thread for the actual HTTP request so that the caller
+    can poll a queue with short timeouts, guaranteeing that cancellation
+    is detected within ~0.5 s even while the network I/O is blocking.
+    """
+    import time
+
     import httpx
     from openai import OpenAI, BadRequestError
 
     normalized_url = _normalize_base_url(base_url) if base_url else None
-    http_client = httpx.Client(timeout=httpx.Timeout(3000, connect=30))
-    if cancel_state:
-        cancel_state.set_http_client(http_client)
-    client = OpenAI(
-        api_key=api_key,
-        base_url=normalized_url,
-        http_client=http_client,
-    )
 
     create_kwargs: dict = {
         "model": model,
@@ -1130,28 +1206,85 @@ def call_openai(
 
     last_exc: Exception | None = None
     for attempt in range(_MAX_RETRIES):
-        try:
-            _raise_if_cancelled(should_cancel)
+        _raise_if_cancelled(should_cancel)
+
+        http_client = httpx.Client(timeout=httpx.Timeout(3000, connect=30))
+        if cancel_state:
+            cancel_state.set_http_client(http_client)
+        client = OpenAI(
+            api_key=api_key,
+            base_url=normalized_url,
+            http_client=http_client,
+        )
+
+        q: _queue.Queue[tuple[str, object]] = _queue.Queue()
+
+        def _api_call(
+            _client: object = client,
+            _kw: dict = create_kwargs,
+            _q: _queue.Queue = q,
+            _cs: CancellableState | None = cancel_state,
+        ) -> None:
             try:
-                stream = client.chat.completions.create(**create_kwargs)
-            except BadRequestError:
-                kw = dict(create_kwargs)
-                kw.pop("max_tokens", None)
-                stream = client.chat.completions.create(**kw)
+                try:
+                    stream = _client.chat.completions.create(**_kw)  # type: ignore[union-attr]
+                except BadRequestError:
+                    fallback_kw = dict(_kw)
+                    fallback_kw.pop("max_tokens", None)
+                    stream = _client.chat.completions.create(**fallback_kw)  # type: ignore[union-attr]
+                if _cs:
+                    _cs.set_stream(stream)
+                for chunk in stream:
+                    if chunk.choices and chunk.choices[0].delta.content:
+                        _q.put(("data", chunk.choices[0].delta.content))
+                _q.put(("done", None))
+            except Exception as exc:
+                _q.put(("error", exc))
 
-            if cancel_state:
-                cancel_state.set_stream(stream)
+        api_thread = threading.Thread(target=_api_call, daemon=True)
+        api_thread.start()
 
+        try:
             parts: list[str] = []
             accumulated = ""
-            for chunk in stream:
-                _raise_if_cancelled(should_cancel)
-                if chunk.choices and chunk.choices[0].delta.content:
-                    text = chunk.choices[0].delta.content
+            started_at = time.monotonic()
+            last_activity_at = started_at
+            has_received_token = False
+            last_progress_mark = 0
+            while True:
+                try:
+                    msg_type, payload = q.get(timeout=0.5)
+                except _queue.Empty:
+                    _raise_if_cancelled(should_cancel)
+                    if on_chunk:
+                        now = time.monotonic()
+                        idle_since = started_at if not has_received_token else last_activity_at
+                        idle_sec = int(now - idle_since)
+                        progress_mark = int(idle_sec // _STREAM_PROGRESS_INTERVAL)
+                        if progress_mark > 0 and progress_mark != last_progress_mark:
+                            last_progress_mark = progress_mark
+                            on_chunk(
+                                _format_stream_progress_text(
+                                    accumulated,
+                                    idle_sec,
+                                    waiting_for_first_token=not has_received_token,
+                                )
+                            )
+                    continue
+
+                if msg_type == "data":
+                    text = str(payload)
                     parts.append(text)
+                    has_received_token = True
+                    last_activity_at = time.monotonic()
+                    last_progress_mark = 0
                     if on_chunk:
                         accumulated += text
                         on_chunk(accumulated)
+                elif msg_type == "done":
+                    break
+                elif msg_type == "error":
+                    raise payload  # type: ignore[misc]
 
             content = accumulated if accumulated else "".join(parts)
             if not content:
@@ -1159,9 +1292,17 @@ def call_openai(
             return content
         except AiArrangeCancelled:
             logger.info("AI arrangement cancelled during streaming")
+            try:
+                http_client.close()
+            except Exception:
+                pass
             raise
         except Exception as exc:
             if should_cancel and should_cancel():
+                try:
+                    http_client.close()
+                except Exception:
+                    pass
                 raise AiArrangeCancelled("AI 编曲已取消") from exc
             logger.warning("OpenAI request attempt %s failed: %s", attempt + 1, _describe_exception(exc))
             if not _is_retryable(exc) or attempt >= _MAX_RETRIES - 1:
@@ -1399,7 +1540,10 @@ def ai_arrange(
     available_set = set(available)
     shift = get_shift(mapping, profile_id, transpose, octave)
     raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
+    _raise_if_cancelled(should_cancel)
+    _emit_progress(on_chunk, "[Stage analyze_key]")
     key_analysis = analyze_midi_key(midi_path, tracks=tracks)
+    _raise_if_cancelled(should_cancel)
 
     unmapped_counts: Counter[int] = Counter()
     for ev in raw_events:
@@ -1408,6 +1552,7 @@ def ai_arrange(
 
     unmapped_unique = sorted(unmapped_counts.keys())
     total_unmapped = sum(unmapped_counts.values())
+    _raise_if_cancelled(should_cancel)
 
     if not unmapped_unique:
         return AiArrangeResult(
@@ -1419,41 +1564,60 @@ def ai_arrange(
 
     midi_filename = midi_path.stem
     meta = read_midi_meta(midi_path, tracks=tracks)
+    force_chunking_by_bars = mode == "context" and _requires_context_chunking_by_bars(raw_events, meta)
 
     optimal_hint = ""
-    try:
-        opts = find_optimal_settings(midi_path, mapping, profile_id, tracks=tracks)
-        if opts:
-            best = opts[0]
-            current_unmapped = total_unmapped
-            if best.unmapped_count < current_unmapped * 0.7:
-                instr = best.instruments[0].split("/")[0] if best.instruments else ""
-                optimal_hint = (
-                    f"\nNOTE: The user's current settings produce {current_unmapped} unmapped note events. "
-                    f"An alternative — transpose {best.transpose:+d} with octave {best.octave:+d} "
-                    f"(instrument key: {best.key_name}, instrument: {instr}) — "
-                    f"would reduce unmapped events to {best.unmapped_count}. "
-                    f"You may mention this in your Analysis if the difference is significant.\n"
-                )
-    except Exception as exc:
-        logger.warning("Unable to compute optimal settings: %s", _describe_exception(exc))
+    if not force_chunking_by_bars:
+        try:
+            _emit_progress(on_chunk, "[Stage optimize]")
+            opts = find_optimal_settings(
+                midi_path,
+                mapping,
+                profile_id,
+                tracks=tracks,
+                should_cancel=should_cancel,
+            )
+            if opts:
+                best = opts[0]
+                current_unmapped = total_unmapped
+                if best.unmapped_count < current_unmapped * 0.7:
+                    instr = best.instruments[0].split("/")[0] if best.instruments else ""
+                    optimal_hint = (
+                        f"\nNOTE: The user's current settings produce {current_unmapped} unmapped note events. "
+                        f"An alternative — transpose {best.transpose:+d} with octave {best.octave:+d} "
+                        f"(instrument key: {best.key_name}, instrument: {instr}) — "
+                        f"would reduce unmapped events to {best.unmapped_count}. "
+                        f"You may mention this in your Analysis if the difference is significant.\n"
+                    )
+        except Exception as exc:
+            if isinstance(exc, AiArrangeCancelled):
+                raise
+            logger.warning("Unable to compute optimal settings: %s", _describe_exception(exc))
 
     if mode == "context":
-        prompt = build_context_prompt(
-            available,
-            raw_events,
-            shift,
-            available_set,
-            style=style,
-            filename=midi_filename,
-            meta=meta,
-            key_analysis=key_analysis,
-            optimal_hint=optimal_hint,
-            simplify=simplify,
-        )
-        estimated = _estimate_tokens(prompt)
+        _raise_if_cancelled(should_cancel)
+        prompt = ""
+        estimated = 0
+        requires_chunking = force_chunking_by_bars
+        if not force_chunking_by_bars:
+            _emit_progress(on_chunk, "[Stage build_prompt]")
+            prompt = build_context_prompt(
+                available,
+                raw_events,
+                shift,
+                available_set,
+                style=style,
+                filename=midi_filename,
+                meta=meta,
+                key_analysis=key_analysis,
+                optimal_hint=optimal_hint,
+                simplify=simplify,
+            )
+            estimated = _estimate_tokens(prompt)
+            _raise_if_cancelled(should_cancel)
+            requires_chunking = _requires_context_chunking(raw_events, meta, estimated)
 
-        if estimated <= _CONTEXT_TOKEN_THRESHOLD:
+        if not requires_chunking:
             raw = call_openai(
                 api_key,
                 prompt,
@@ -1467,6 +1631,7 @@ def ai_arrange(
             analysis_text, _, position_map = parse_ai_response(raw, "context")
         else:
             chunks = _split_events_into_chunks(raw_events, meta)
+            _emit_progress(on_chunk, f"[Stage split_chunks total={len(chunks)}]")
             all_positions: list[PositionRemap] = []
             all_raw_parts: list[str] = []
             analysis_text = ""
@@ -1485,6 +1650,8 @@ def ai_arrange(
                     optimal_hint="" if ci > 0 else optimal_hint,
                     simplify=simplify,
                 )
+                if ci == 0 and not prompt:
+                    prompt = chunk_prompt
                 chunk_label = f"[Chunk {ci + 1}/{len(chunks)}]"
                 if on_chunk:
                     on_chunk(f"{chunk_label} Processing...\n" + "\n".join(all_raw_parts))
@@ -1557,6 +1724,7 @@ def ai_arrange(
         optimal_hint=optimal_hint,
         simplify=simplify,
     )
+    _raise_if_cancelled(should_cancel)
     raw = call_openai(
         api_key,
         prompt,
