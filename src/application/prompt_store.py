@@ -58,6 +58,7 @@ Instrument range: {avail_min_desc} ~ {avail_max_desc}
 Likely tonal center to preserve: {scale_key}.
 Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
 {optimal_hint}
+{continuation_context}
 Below is the note sequence from a MIDI track, grouped by simultaneous notes and organized by bar.
 - Notes marked [UNMAPPED] cannot be played on this instrument and need replacements.
 - Notes marked [MELODY] are the most likely foreground note in each group based on pitch, duration, velocity, and continuity.
@@ -109,6 +110,43 @@ Your response MUST have exactly two sections with these headers. Write the Analy
 A JSON array of replacements for UNMAPPED notes, like:
 [{{"time_ms": 1000, "original": 61, "replacement": 60}}, {{"time_ms": 2000, "original": 61, "replacement": 62}}]{drop_hint}
 
+Nothing else after the JSON array.""",
+
+    "extract_template": """\
+You are a professional music analyst and arranger.
+{meta_block}
+{continuation_context}
+Below is a note sequence from a MIDI file, grouped by simultaneous notes and organized by bar.
+Each note shows its MIDI number, note name, duration, velocity, and a heuristic tag:
+- [LIKELY_MELODY] — heuristically identified as the most likely melody note in its group (based on pitch, velocity, duration, and continuity).
+- [ACCENT] — louder note that may be melodically prominent.
+- Notes without tags are candidates for accompaniment or bass.
+
+Your task: classify EVERY note in the sequence into exactly one role:
+- **melody** — the main tune the listener hears and would sing along to. Usually one note at a time, occasionally two in parallel thirds/sixths. Characteristics: highest or most prominent pitch in each group, longest duration, strongest velocity, smooth stepwise or small-leap motion between consecutive groups.
+- **accompaniment** — harmonic support, arpeggios, chords, rhythmic patterns, counter-melodies. Characteristics: repetitive patterns, block chords, broken chords (Alberti bass, arpeggios), inner voices, octave doublings of the melody.
+- **bass** — the lowest voice providing harmonic foundation. Characteristics: lowest pitch in each group, often root notes of chords, slower rhythm than accompaniment, typically in a lower octave register.
+
+=== CLASSIFICATION RULES ===
+1. MELODY CONTINUITY — the melody line should be smooth and continuous. Avoid jumping the melody label between wildly different pitch registers from one group to the next.
+2. ONE MELODY PER GROUP — in most groups, only one note is melody. Exception: parallel thirds/sixths where two notes move together can both be melody.
+3. BASS IS THE BOTTOM — bass is typically the single lowest note. If the lowest note is part of a dense chord voicing and not separated by an octave gap, it may be accompaniment instead.
+4. EVERYTHING ELSE IS ACCOMPANIMENT — inner chord tones, arpeggiated patterns, repeated chords, counter-melodies, and octave doublings.
+5. USE CONTEXT — a note that is melody in one bar might become accompaniment in another if the melody moves to a different register.
+
+Note sequence:
+{sequence_text}
+
+Your response MUST have exactly two sections with these headers. Write the Analysis section in Chinese (中文).
+
+## Analysis
+简要分析这段音乐的结构：旋律线在什么音域、伴奏是什么形态（柱式和弦、分解和弦、琶音等）、低音走向如何。如果能从文件名识别曲目请说明。保持简洁（3-8行）。
+
+## Roles
+A JSON array classifying each note. Use this format:
+[{{"time_ms": 1000, "note": 72, "role": "melody"}}, {{"time_ms": 1000, "note": 60, "role": "bass"}}, {{"time_ms": 1000, "note": 64, "role": "accompaniment"}}]
+
+Include ALL notes from the input. Every (time_ms, note) pair must appear exactly once.
 Nothing else after the JSON array.""",
 
     "style_conservative": """\

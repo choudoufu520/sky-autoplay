@@ -5,6 +5,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QHBoxLayout,
     QHeaderView,
@@ -21,11 +22,15 @@ from src.infrastructure.midi_reader import MidiKeyAnalysis, MidiTrackInfo, analy
 from src.interfaces.gui.i18n import on_language_changed, tr
 
 
+_ROLE_OPTIONS = ["auto", "melody", "accompaniment", "bass", "ignore"]
+
+
 class TracksTab(QWidget):
     midi_loaded = Signal(str)
     preview_requested = Signal(str, int)
     key_analyzed = Signal(object)  # MidiKeyAnalysis
     tracks_selected = Signal(list)  # list[int] of selected track indices
+    track_roles_changed = Signal(dict)  # dict[int, str]
 
     def __init__(self) -> None:
         super().__init__()
@@ -57,7 +62,7 @@ class TracksTab(QWidget):
         self.note_dist_label.setWordWrap(True)
         layout.addWidget(self.note_dist_label)
 
-        self.table = QTableWidget(0, 8)
+        self.table = QTableWidget(0, 9)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -102,6 +107,7 @@ class TracksTab(QWidget):
             tr("tracks.col_tempo"),
             tr("tracks.col_programs"),
             tr("tracks.col_key"),
+            tr("tracks.col_role"),
         ])
         self.select_all_btn.setText(tr("tracks.select_all"))
         self.deselect_all_btn.setText(tr("tracks.deselect_all"))
@@ -169,6 +175,12 @@ class TracksTab(QWidget):
                 except Exception:
                     pass
             self.table.setItem(row, 7, QTableWidgetItem(key_text))
+
+            role_combo = QComboBox()
+            role_combo.addItems([tr(f"tracks.role_{r}") for r in _ROLE_OPTIONS])
+            role_combo.setProperty("track_index", t.index)
+            role_combo.currentIndexChanged.connect(self._on_role_changed)
+            self.table.setCellWidget(row, 8, role_combo)
 
         self._suppress_check_signal = False
 
@@ -246,6 +258,21 @@ class TracksTab(QWidget):
             self.note_dist_label.setText(tr("tracks.note_dist").format(dist="  ".join(top)))
         else:
             self.note_dist_label.setText("")
+
+    def get_track_roles(self) -> dict[int, str]:
+        """Return {track_index: role_string} for all rows."""
+        roles: dict[int, str] = {}
+        for row in range(self.table.rowCount()):
+            combo = self.table.cellWidget(row, 8)
+            if isinstance(combo, QComboBox):
+                track_idx = combo.property("track_index")
+                roles[track_idx] = _ROLE_OPTIONS[combo.currentIndex()]
+        return roles
+
+    def _on_role_changed(self) -> None:
+        if self._suppress_check_signal:
+            return
+        self.track_roles_changed.emit(self.get_track_roles())
 
     def _on_double_click(self) -> None:
         row = self.table.currentRow()

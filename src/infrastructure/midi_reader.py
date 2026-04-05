@@ -37,6 +37,7 @@ class RawMidiEvent:
     duration_ms: int
     velocity: int
     program: int | None
+    role: str | None = None
 
 
 @dataclass(slots=True)
@@ -49,12 +50,27 @@ class MidiTrackInfo:
     has_tempo: bool
 
 
-def read_midi_events(midi_path: Path, *, tracks: list[int] | None = None) -> tuple[list[RawMidiEvent], int, int]:
+def read_midi_events(
+    midi_path: Path,
+    *,
+    tracks: list[int] | None = None,
+    track_roles: dict[int, str] | None = None,
+) -> tuple[list[RawMidiEvent], int, int]:
     midi = _load_midi(midi_path)
     ppq = midi.ticks_per_beat
 
-    track_stream = _build_track_stream(midi, tracks)
+    if track_roles:
+        return _read_events_with_roles(midi, ppq, tracks, track_roles)
 
+    track_stream = _build_track_stream(midi, tracks)
+    return _extract_events_from_stream(track_stream, ppq)
+
+
+def _extract_events_from_stream(
+    track_stream,
+    ppq: int,
+    role: str | None = None,
+) -> tuple[list[RawMidiEvent], int, int]:
     current_tempo = 500000  # 120 BPM
     current_ms = 0.0
     active_notes: dict[int, tuple[float, int, int | None]] = {}
@@ -95,11 +111,40 @@ def read_midi_events(midi_path: Path, *, tracks: list[int] | None = None) -> tup
                     duration_ms=duration,
                     velocity=velocity,
                     program=program,
+                    role=role,
                 )
             )
 
     events.sort(key=lambda x: x.time_ms)
     return events, ppq, tempo_count
+
+
+def _read_events_with_roles(
+    midi: MidiFile,
+    ppq: int,
+    tracks: list[int] | None,
+    track_roles: dict[int, str],
+) -> tuple[list[RawMidiEvent], int, int]:
+    """Read events from individual tracks, tagging each with its assigned role."""
+    indices = tracks if tracks is not None else list(range(len(midi.tracks)))
+    valid = [i for i in indices if 0 <= i < len(midi.tracks)]
+    if not valid:
+        raise IndexError(f"no valid track indices in {indices}, track_count={len(midi.tracks)}")
+
+    all_events: list[RawMidiEvent] = []
+    total_tempo_count = 0
+
+    for idx in valid:
+        role = track_roles.get(idx)
+        if role == "ignore":
+            continue
+        role_tag = role if role and role != "auto" else None
+        evts, _, tc = _extract_events_from_stream(midi.tracks[idx], ppq, role=role_tag)
+        all_events.extend(evts)
+        total_tempo_count = max(total_tempo_count, tc)
+
+    all_events.sort(key=lambda x: x.time_ms)
+    return all_events, ppq, total_tempo_count
 
 
 def list_midi_tracks(midi_path: Path) -> tuple[int, list[MidiTrackInfo]]:

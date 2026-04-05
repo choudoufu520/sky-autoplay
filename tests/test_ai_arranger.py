@@ -7,6 +7,11 @@ import pytest
 import src.application.ai_arranger as ai_arranger
 from src.application.ai_arranger import (
     PositionRemap,
+    RoleClassification,
+    _build_context_continuation,
+    _build_extract_continuation,
+    _compute_final_melody,
+    _compute_final_melody_extract,
     _count_total_bars,
     _enforce_context_rules,
     _extract_balanced,
@@ -17,6 +22,8 @@ from src.application.ai_arranger import (
     _requires_context_chunking_by_bars,
     _split_events_into_chunks,
     ai_arrange,
+    build_context_prompt,
+    build_extract_prompt,
     find_optimal_settings,
     get_arrange_precheck,
     parse_analysis_and_json,
@@ -293,14 +300,14 @@ class TestArrangePrecheck:
         midi_path.write_bytes(b"")
         events = [
             RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
-            for i in range(60)
+            for i in range(120)
         ]
 
         monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
         monkeypatch.setattr(
             ai_arranger,
             "read_midi_meta",
-            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=240.0),
         )
         monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
 
@@ -311,7 +318,7 @@ class TestArrangePrecheck:
             mode="context",
         )
 
-        assert precheck.estimated_tokens < 24_000
+        assert precheck.estimated_tokens < 48_000
         assert precheck.requires_chunking is True
 
     def test_context_precheck_uses_chunk_sample_for_long_song(self, monkeypatch, tmp_path):
@@ -323,7 +330,7 @@ class TestArrangePrecheck:
         midi_path.write_bytes(b"")
         events = [
             RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
-            for i in range(60)
+            for i in range(120)
         ]
         seen_lengths: list[int] = []
 
@@ -331,7 +338,7 @@ class TestArrangePrecheck:
         monkeypatch.setattr(
             ai_arranger,
             "read_midi_meta",
-            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=240.0),
         )
         monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
 
@@ -491,10 +498,10 @@ class TestChunkingAndContextRules:
         meta = MidiMeta(bpm=120.0, time_signature="4/4")
         events = [
             RawMidiEvent(time_ms=i * 2000, note=60, duration_ms=300, velocity=80, program=None)
-            for i in range(60)
+            for i in range(120)
         ]
 
-        assert _count_total_bars(events, meta) == 60
+        assert _count_total_bars(events, meta) == 120
         assert _requires_context_chunking_by_bars(events, meta) is True
         assert _requires_context_chunking(events, meta, estimated_tokens=1000) is True
 
@@ -507,7 +514,7 @@ class TestChunkingAndContextRules:
         midi_path.write_bytes(b"")
         events = [
             RawMidiEvent(time_ms=i * 2000, note=61, duration_ms=300, velocity=80, program=None)
-            for i in range(60)
+            for i in range(120)
         ]
         calls: list[str] = []
 
@@ -515,7 +522,7 @@ class TestChunkingAndContextRules:
         monkeypatch.setattr(
             ai_arranger,
             "read_midi_meta",
-            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=120.0),
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=240.0),
         )
         monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
 
@@ -627,3 +634,231 @@ class TestTransposeToKeyName:
     def test_wrap_around(self):
         assert transpose_to_key_name(0, profile_transpose=0) == "C major"
         assert transpose_to_key_name(-12, profile_transpose=0) == "C major"
+
+
+class TestChunkContinuity:
+    """Tests for cross-chunk continuity improvements."""
+
+    def test_build_context_continuation_empty(self):
+        assert _build_context_continuation([]) == ""
+
+    def test_build_context_continuation_format(self):
+        positions = [
+            PositionRemap(1000, 73, 72),
+            PositionRemap(1500, 61, 60),
+        ]
+        result = _build_context_continuation(positions)
+        assert "CONTINUATION FROM PREVIOUS SEGMENT" in result
+        assert "t=1000ms" in result
+        assert "73" in result
+        assert "72" in result
+        assert "continuity" in result.lower()
+
+    def test_build_context_continuation_truncates_to_n_tail(self):
+        positions = [PositionRemap(i * 100, 61, 60) for i in range(20)]
+        result = _build_context_continuation(positions, n_tail=3)
+        assert result.count("t=") == 3
+
+    def test_build_extract_continuation_empty(self):
+        assert _build_extract_continuation([]) == ""
+
+    def test_build_extract_continuation_format(self):
+        roles = [
+            RoleClassification(1000, 72, "melody"),
+            RoleClassification(1000, 60, "bass"),
+            RoleClassification(1500, 69, "melody"),
+        ]
+        result = _build_extract_continuation(roles)
+        assert "CONTINUATION FROM PREVIOUS SEGMENT" in result
+        assert "melody" in result
+        assert "bass" in result
+        assert "t=1000ms" in result
+
+    def test_compute_final_melody_context(self):
+        events = [
+            RawMidiEvent(time_ms=0, note=72, duration_ms=400, velocity=110, program=None),
+            RawMidiEvent(time_ms=0, note=60, duration_ms=400, velocity=60, program=None),
+            RawMidiEvent(time_ms=500, note=69, duration_ms=400, velocity=108, program=None),
+        ]
+        result = _compute_final_melody(
+            events, shift=0, available_set={60, 62, 64, 67, 69, 72},
+            meta=MidiMeta(bpm=120.0, time_signature="4/4"),
+        )
+        assert result is not None
+        assert result == 69
+
+    def test_compute_final_melody_extract(self):
+        events = [
+            RawMidiEvent(time_ms=0, note=72, duration_ms=400, velocity=110, program=None),
+            RawMidiEvent(time_ms=500, note=69, duration_ms=400, velocity=108, program=None),
+        ]
+        result = _compute_final_melody_extract(
+            events, meta=MidiMeta(bpm=120.0, time_signature="4/4"),
+        )
+        assert result == 69
+
+    def test_compute_final_melody_carries_initial_state(self):
+        events = [
+            RawMidiEvent(time_ms=0, note=65, duration_ms=400, velocity=80, program=None),
+            RawMidiEvent(time_ms=0, note=72, duration_ms=400, velocity=80, program=None),
+        ]
+        without_init = _compute_final_melody(
+            events, shift=0, available_set={65, 72},
+            meta=MidiMeta(bpm=120.0, time_signature="4/4"),
+        )
+        with_init = _compute_final_melody(
+            events, shift=0, available_set={65, 72},
+            meta=MidiMeta(bpm=120.0, time_signature="4/4"),
+            initial_previous_melody=64,
+        )
+        assert without_init is not None
+        assert with_init is not None
+
+    def test_build_context_prompt_includes_continuation(self):
+        available = [60, 62, 64, 65, 67, 69, 71, 72]
+        events = [
+            RawMidiEvent(time_ms=0, note=61, duration_ms=300, velocity=80, program=None),
+        ]
+        prompt = build_context_prompt(
+            available, events, shift=0, available_set=set(available),
+            continuation_context="=== CONTINUATION ===\nPrevious segment info here.",
+        )
+        assert "CONTINUATION" in prompt
+        assert "Previous segment info here" in prompt
+
+    def test_build_extract_prompt_includes_continuation(self):
+        events = [
+            RawMidiEvent(time_ms=0, note=60, duration_ms=300, velocity=80, program=None),
+        ]
+        prompt = build_extract_prompt(
+            events,
+            continuation_context="=== CONTINUATION ===\nPrevious roles here.",
+        )
+        assert "CONTINUATION" in prompt
+        assert "Previous roles here" in prompt
+
+    def test_context_chunked_last_wins_merging(self, monkeypatch, tmp_path):
+        """Overlap entries from later chunks should overwrite earlier ones."""
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "overlap.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=61, duration_ms=300, velocity=80, program=None)
+            for i in range(120)
+        ]
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *a, **kw: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger, "read_midi_meta",
+            lambda *a, **kw: MidiMeta(bpm=120.0, time_signature="4/4",
+                                      total_notes=len(events), duration_sec=240.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *a, **kw: MidiKeyAnalysis())
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", lambda *a, **kw: "prompt")
+
+        call_count = {"n": 0}
+
+        def _fake_call_openai(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 1:
+                return (
+                    '## Analysis\nchunk1\n\n## Mapping\n'
+                    '[{"time_ms": 192000, "original": 61, "replacement": 60}]'
+                )
+            return (
+                '## Analysis\nchunk2\n\n## Mapping\n'
+                '[{"time_ms": 192000, "original": 61, "replacement": 64}]'
+            )
+
+        monkeypatch.setattr(ai_arranger, "call_openai", _fake_call_openai)
+
+        result = ai_arrange(midi_path, mapping, "default", api_key="k", mode="context")
+
+        overlapping = [pr for pr in result.position_map if pr.time_ms == 192000 and pr.original == 61]
+        assert len(overlapping) == 1
+        assert overlapping[0].replacement == 64  # last-wins
+
+    def test_context_chunked_passes_continuation_and_melody(self, monkeypatch, tmp_path):
+        """Subsequent chunks should receive continuation context and melody state."""
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "cont.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=61, duration_ms=300, velocity=80, program=None)
+            for i in range(120)
+        ]
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *a, **kw: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger, "read_midi_meta",
+            lambda *a, **kw: MidiMeta(bpm=120.0, time_signature="4/4",
+                                      total_notes=len(events), duration_sec=240.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *a, **kw: MidiKeyAnalysis())
+
+        captured_kwargs: list[dict] = []
+
+        def _capture_build_context_prompt(*args, **kwargs):
+            captured_kwargs.append(kwargs)
+            return "prompt"
+
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", _capture_build_context_prompt)
+        monkeypatch.setattr(
+            ai_arranger, "call_openai",
+            lambda *a, **kw: '## Analysis\nok\n\n## Mapping\n'
+                             '[{"time_ms": 0, "original": 61, "replacement": 60}]',
+        )
+
+        ai_arrange(midi_path, mapping, "default", api_key="k", mode="context")
+
+        assert len(captured_kwargs) >= 2
+        assert captured_kwargs[0].get("continuation_context") == ""
+        assert captured_kwargs[0].get("initial_previous_melody") is None
+        assert "CONTINUATION" in captured_kwargs[1].get("continuation_context", "")
+        assert captured_kwargs[1].get("initial_previous_melody") is not None
+
+    def test_context_chunked_passes_optimal_hint_to_all(self, monkeypatch, tmp_path):
+        """All chunks should receive the optimal_hint, not just the first."""
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "hint.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 2000, note=61, duration_ms=300, velocity=80, program=None)
+            for i in range(120)
+        ]
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *a, **kw: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger, "read_midi_meta",
+            lambda *a, **kw: MidiMeta(bpm=120.0, time_signature="4/4",
+                                      total_notes=len(events), duration_sec=240.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *a, **kw: MidiKeyAnalysis())
+
+        captured_hints: list[str] = []
+
+        def _capture_prompt(*args, **kwargs):
+            captured_hints.append(kwargs.get("optimal_hint", ""))
+            return "prompt"
+
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", _capture_prompt)
+        monkeypatch.setattr(
+            ai_arranger, "call_openai",
+            lambda *a, **kw: '## Analysis\nok\n\n## Mapping\n'
+                             '[{"time_ms": 0, "original": 61, "replacement": 60}]',
+        )
+
+        ai_arrange(midi_path, mapping, "default", api_key="k", mode="context")
+
+        assert len(captured_hints) >= 2
+        for hint in captured_hints:
+            assert hint == captured_hints[0]

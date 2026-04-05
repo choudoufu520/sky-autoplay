@@ -202,6 +202,17 @@ class ConvertTab(QWidget):
         denoise_params.addStretch()
         self.form.addRow(denoise_params)
 
+        self.accomp_label = QLabel()
+        self.accomp_combo = QComboBox()
+        for value, label_key in [
+            ("keep", "convert.accomp_keep"),
+            ("thin", "convert.accomp_thin"),
+            ("simplify", "convert.accomp_simplify"),
+            ("drop", "convert.accomp_drop"),
+        ]:
+            self.accomp_combo.addItem(tr(label_key), value)
+        self.form.addRow(self.accomp_label, self.accomp_combo)
+
         self.preview_midi_check = QCheckBox()
         self.form.addRow(self.preview_midi_check)
 
@@ -277,6 +288,7 @@ class ConvertTab(QWidget):
         self.ai_mode_combo = QComboBox()
         self.ai_mode_combo.addItem(tr("convert.ai_mode_remap"), userData="remap")
         self.ai_mode_combo.addItem(tr("convert.ai_mode_context"), userData="context")
+        self.ai_mode_combo.addItem(tr("convert.ai_mode_extract"), userData="extract")
         self.ai_mode_combo.setCurrentIndex(1)
         ai_row4.addWidget(self.ai_mode_combo, 1)
 
@@ -408,6 +420,8 @@ class ConvertTab(QWidget):
         self._ai_available_notes: list[int] = []
         self._ai_last_result: object | None = None
         self._optimal_setting: object | None = None
+        self._track_roles: dict[int, str] | None = None
+        self._ai_role_map: dict[tuple[int, int], str] | None = None
 
         self._ai_timer = QTimer(self)
         self._ai_timer.setInterval(1000)
@@ -477,6 +491,12 @@ class ConvertTab(QWidget):
         self.denoise_max_sim_spin.setToolTip(tr("convert.denoise_max_sim_tip"))
         self.denoise_max_repeat_label.setText(tr("convert.denoise_max_repeat"))
         self.denoise_max_repeat_spin.setToolTip(tr("convert.denoise_max_repeat_tip"))
+        self.accomp_label.setText(tr("convert.accomp_strategy"))
+        for i, label_key in enumerate([
+            "convert.accomp_keep", "convert.accomp_thin",
+            "convert.accomp_simplify", "convert.accomp_drop",
+        ]):
+            self.accomp_combo.setItemText(i, tr(label_key))
         self.optimal_apply_btn.setText(tr("convert.ai_key_apply"))
         self.preview_midi_check.setText(tr("convert.preview_midi"))
         self.convert_btn.setText(tr("convert.btn"))
@@ -499,6 +519,7 @@ class ConvertTab(QWidget):
         self.ai_mode_label.setText(tr("convert.ai_mode"))
         self.ai_mode_combo.setItemText(0, tr("convert.ai_mode_remap"))
         self.ai_mode_combo.setItemText(1, tr("convert.ai_mode_context"))
+        self.ai_mode_combo.setItemText(2, tr("convert.ai_mode_extract"))
         self.ai_mode_combo.setToolTip(tr("convert.ai_mode_tip"))
         self.ai_style_label.setText(tr("convert.ai_style"))
         self.ai_style_combo.setItemText(0, tr("convert.ai_style_conservative"))
@@ -587,6 +608,10 @@ class ConvertTab(QWidget):
         self._tracks_model.blockSignals(False)
         self._update_tracks_combo_text()
         self._on_track_changed()
+
+    def set_track_roles(self, roles: dict[int, str]) -> None:
+        has_roles = any(v not in ("auto", "ignore") for v in roles.values())
+        self._track_roles = roles if has_roles else None
 
     def _on_track_changed(self, _item=None) -> None:
         self._update_tracks_combo_text()
@@ -859,7 +884,7 @@ class ConvertTab(QWidget):
 
         self._ai_available_notes = precheck.available_notes
 
-        if mode == "context" and precheck.requires_chunking:
+        if mode in ("context", "extract") and precheck.requires_chunking:
             try:
                 from PySide6.QtWidgets import QMessageBox
                 reply = QMessageBox.question(
@@ -936,6 +961,21 @@ class ConvertTab(QWidget):
             self.result_text.setPlainText(result.analysis_text)
         else:
             self.result_text.setPlainText(result.explanation)
+
+        if result.mode == "extract" and result.role_map:
+            self._ai_role_map = result.role_map
+            from collections import Counter
+            counts = Counter(result.role_map.values())
+            summary = ", ".join(
+                f"{tr(f'convert.ai_role_{r}')}: {c}" for r, c in sorted(counts.items())
+            )
+            self.ai_status_label.setText(
+                tr("convert.ai_extract_done").format(summary=summary, sec=elapsed)
+            )
+            self.ai_arrange_btn.setEnabled(True)
+            self.ai_arrange_btn.setVisible(True)
+            self.ai_cancel_btn.setVisible(False)
+            return
 
         if result.mode == "remap" and result.note_map:
             self._populate_review_table(result.note_map)
@@ -1396,6 +1436,9 @@ class ConvertTab(QWidget):
             denoise=self.denoise_check.isChecked(),
             denoise_max_simultaneous=self.denoise_max_sim_spin.value(),
             denoise_max_chord_repeats=self.denoise_max_repeat_spin.value(),
+            track_roles=self._track_roles,
+            accompaniment_strategy=self.accomp_combo.currentData() or "keep",
+            role_map=self._ai_role_map,
         )
 
         try:
@@ -1606,6 +1649,9 @@ class ConvertTab(QWidget):
             denoise=self.denoise_check.isChecked(),
             denoise_max_simultaneous=self.denoise_max_sim_spin.value(),
             denoise_max_chord_repeats=self.denoise_max_repeat_spin.value(),
+            track_roles=self._track_roles,
+            accompaniment_strategy=self.accomp_combo.currentData() or "keep",
+            role_map=self._ai_role_map,
         )
 
         try:

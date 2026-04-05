@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
+
+
+class NoteRole(str, Enum):
+    melody = "melody"
+    accompaniment = "accompaniment"
+    bass = "bass"
 
 
 ActionType = Literal["down", "up", "tap"]

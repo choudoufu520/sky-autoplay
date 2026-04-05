@@ -83,6 +83,7 @@ class PositionRemap:
 class AiArrangeResult:
     note_map: dict[int, int] = field(default_factory=dict)
     position_map: list[PositionRemap] = field(default_factory=list)
+    role_map: dict[tuple[int, int], str] = field(default_factory=dict)
     mode: str = "remap"
     explanation: str = ""
     analysis_text: str = ""
@@ -610,6 +611,7 @@ def _choose_melody_note(group: _NoteGroup, previous_melody: int | None) -> int:
 def _format_grouped_sequence(
     groups: list[_NoteGroup],
     meta: MidiMeta | None,
+    initial_previous_melody: int | None = None,
 ) -> str:
     """Format note groups with bar markers and melody tags."""
     bar_ms = 2000.0
@@ -624,7 +626,7 @@ def _format_grouped_sequence(
 
     lines: list[str] = []
     current_bar = 0
-    previous_melody: int | None = None
+    previous_melody: int | None = initial_previous_melody
     for g in groups:
         bar_num = int(g.time_ms / bar_ms) + 1
         if bar_num != current_bar:
@@ -659,11 +661,13 @@ def build_context_prompt(
     key_analysis: MidiKeyAnalysis | None = None,
     optimal_hint: str = "",
     simplify: bool = False,
+    continuation_context: str = "",
+    initial_previous_melody: int | None = None,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
     groups = _group_notes_by_time(events, shift, available_set, meta=meta)
-    sequence_text = _format_grouped_sequence(groups, meta)
+    sequence_text = _format_grouped_sequence(groups, meta, initial_previous_melody)
 
     avail_min = min(available)
     avail_max = max(available)
@@ -687,6 +691,7 @@ def build_context_prompt(
         "avail_max_desc": f"{avail_max}({_midi_to_name(avail_max)})",
         "scale_key": scale_key,
         "optimal_hint": optimal_hint,
+        "continuation_context": continuation_context,
         "style_block": style_block,
         "drop_hint": drop_hint,
         "simplify_block": simplify_block,
@@ -720,6 +725,170 @@ def parse_context_response(response: str) -> list[PositionRemap]:
             replacement=int(item["replacement"]),
         ))
     return result
+
+
+# ── Extract mode (melody/accompaniment/bass classification) ─
+
+
+@dataclass(slots=True)
+class RoleClassification:
+    time_ms: int
+    note: int
+    role: str  # "melody" | "accompaniment" | "bass"
+
+
+def _format_extract_sequence(
+    groups: list[_NoteGroup],
+    meta: MidiMeta | None,
+    initial_previous_melody: int | None = None,
+) -> str:
+    """Format note groups with bar markers and LIKELY_MELODY tags for extract mode."""
+    bar_ms = 2000.0
+    if meta:
+        try:
+            parts = meta.time_signature.split("/")
+            beats = int(parts[0])
+        except (ValueError, IndexError):
+            beats = 4
+        if meta.bpm > 0:
+            bar_ms = (60_000 / meta.bpm) * beats
+
+    lines: list[str] = []
+    current_bar = 0
+    previous_melody: int | None = initial_previous_melody
+    for g in groups:
+        bar_num = int(g.time_ms / bar_ms) + 1
+        if bar_num != current_bar:
+            current_bar = bar_num
+            lines.append(f"\n--- Bar {bar_num} ---")
+
+        melody_note = _choose_melody_note(g, previous_melody)
+        previous_melody = melody_note
+        parts: list[str] = []
+        for grouped in sorted(g.notes, key=lambda x: x.final_note):
+            tag = ""
+            if grouped.final_note == melody_note:
+                tag += " [LIKELY_MELODY]"
+            if grouped.velocity >= 100:
+                tag += " [ACCENT]"
+            parts.append(
+                f"{grouped.final_note}({midi_to_name(grouped.final_note)}) "
+                f"dur={grouped.duration_ms}ms vel={grouped.velocity}{tag}"
+            )
+        lines.append(f"[t={g.time_ms}ms] {' | '.join(parts)}")
+    return "\n".join(lines)
+
+
+def _group_notes_for_extract(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None = None,
+    threshold_ms: int | None = None,
+) -> list[_NoteGroup]:
+    """Group notes for extract mode (no shift / available_set filtering)."""
+    if not events:
+        return []
+    threshold = _group_threshold_ms(meta) if threshold_ms is None else threshold_ms
+    groups: list[_NoteGroup] = []
+    current = _NoteGroup(time_ms=events[0].time_ms, notes=[])
+    for ev in events:
+        if ev.time_ms - current.time_ms > threshold:
+            if current.notes:
+                groups.append(current)
+            current = _NoteGroup(time_ms=ev.time_ms, notes=[])
+        current.notes.append(
+            _GroupedNote(
+                final_note=ev.note,
+                duration_ms=ev.duration_ms,
+                velocity=ev.velocity,
+                status="OK",
+            )
+        )
+    if current.notes:
+        groups.append(current)
+    return groups
+
+
+def build_extract_prompt(
+    events: list[RawMidiEvent],
+    filename: str = "",
+    meta: MidiMeta | None = None,
+    key_analysis: MidiKeyAnalysis | None = None,
+    continuation_context: str = "",
+    initial_previous_melody: int | None = None,
+) -> str:
+    groups = _group_notes_for_extract(events, meta=meta)
+    sequence_text = _format_extract_sequence(groups, meta, initial_previous_melody)
+    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+
+    templates = _load_templates()
+    template = templates.get("extract_template", "")
+    return template.format_map({
+        "meta_block": meta_block,
+        "continuation_context": continuation_context,
+        "sequence_text": sequence_text,
+    })
+
+
+def parse_extract_response(response: str) -> list[RoleClassification]:
+    text = _extract_clean_text(response)
+
+    roles_match = re.search(r"##\s*Roles\s*\n", response, re.IGNORECASE)
+    if roles_match:
+        text = response[roles_match.end():].strip()
+
+    block = _extract_balanced(text, "[", "]")
+    if block:
+        text = block
+    else:
+        idx = text.find("[")
+        if idx >= 0:
+            text = text[idx:]
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        text = _repair_truncated_json(text)
+        data = json.loads(text)
+
+    valid_roles = {"melody", "accompaniment", "bass"}
+    result: list[RoleClassification] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        if "time_ms" not in item or "note" not in item or "role" not in item:
+            continue
+        role = str(item["role"]).lower()
+        if role not in valid_roles:
+            role = "accompaniment"
+        result.append(RoleClassification(
+            time_ms=int(item["time_ms"]),
+            note=int(item["note"]),
+            role=role,
+        ))
+    return result
+
+
+def _parse_extract_ai_response(response: str) -> tuple[str, list[RoleClassification]]:
+    """Parse AI extract response into (analysis_text, role_classifications)."""
+    roles_match = re.search(r"##\s*Roles\s*\n", response, re.IGNORECASE)
+    analysis_match = re.search(r"##\s*Analysis\s*\n", response, re.IGNORECASE)
+
+    analysis_text = ""
+    if analysis_match and roles_match:
+        analysis_text = response[analysis_match.end():roles_match.start()].strip()
+    elif analysis_match:
+        analysis_text = response[analysis_match.end():].strip()
+
+    try:
+        roles = parse_extract_response(response)
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise AiArrangeError(
+            "invalid_response",
+            "AI 返回的角色分类无法解析，请重试。",
+            detail=str(exc),
+        ) from exc
+
+    return analysis_text, roles
 
 
 # ── Shared utilities ────────────────────────────────────────
@@ -880,10 +1049,91 @@ def _normalize_base_url(url: str) -> str:
     return url
 
 
-_CONTEXT_TOKEN_THRESHOLD = 24_000
+def _build_context_continuation(
+    chunk_positions: list[PositionRemap],
+    n_tail: int = 8,
+) -> str:
+    """Build continuation context from previous chunk's position mappings."""
+    if not chunk_positions:
+        return ""
+    tail = chunk_positions[-n_tail:]
+    lines = [
+        "=== CONTINUATION FROM PREVIOUS SEGMENT ===",
+        "This segment continues from a previous one. The last replacements were:",
+    ]
+    for pr in tail:
+        lines.append(
+            f"  [t={pr.time_ms}ms] {pr.original}({midi_to_name(pr.original)}) -> "
+            f"{pr.replacement}({midi_to_name(pr.replacement)})"
+        )
+    lines.append(
+        "Maintain melodic and harmonic continuity with these prior mappings. "
+        "Do not abruptly change direction or register at the start of this segment."
+    )
+    return "\n".join(lines)
+
+
+def _build_extract_continuation(
+    chunk_roles: list[RoleClassification],
+    n_tail: int = 10,
+) -> str:
+    """Build continuation context from previous chunk's role classifications."""
+    if not chunk_roles:
+        return ""
+    tail = sorted(chunk_roles[-n_tail:], key=lambda r: r.time_ms)
+    lines = [
+        "=== CONTINUATION FROM PREVIOUS SEGMENT ===",
+        "This segment continues from a previous one. The last role classifications were:",
+    ]
+    current_time: int | None = None
+    parts: list[str] = []
+    for r in tail:
+        if current_time is not None and r.time_ms != current_time:
+            lines.append(f"  [t={current_time}ms] {' | '.join(parts)}")
+            parts = []
+        current_time = r.time_ms
+        parts.append(f"{r.note}({midi_to_name(r.note)})={r.role}")
+    if parts and current_time is not None:
+        lines.append(f"  [t={current_time}ms] {' | '.join(parts)}")
+    lines.append(
+        "Maintain role assignment continuity with the previous segment. "
+        "Do not abruptly change which voice carries the melody."
+    )
+    return "\n".join(lines)
+
+
+def _compute_final_melody(
+    events: list[RawMidiEvent],
+    shift: int,
+    available_set: set[int],
+    meta: MidiMeta | None,
+    initial_previous_melody: int | None = None,
+) -> int | None:
+    """Walk through groups and return the last chosen melody note (context mode)."""
+    groups = _group_notes_by_time(events, shift, available_set, meta=meta)
+    prev = initial_previous_melody
+    for g in groups:
+        prev = _choose_melody_note(g, prev)
+    return prev
+
+
+def _compute_final_melody_extract(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+    initial_previous_melody: int | None = None,
+) -> int | None:
+    """Walk through groups and return the last chosen melody note (extract mode)."""
+    groups = _group_notes_for_extract(events, meta=meta)
+    prev = initial_previous_melody
+    for g in groups:
+        prev = _choose_melody_note(g, prev)
+    return prev
+
+
+_CONTEXT_TOKEN_THRESHOLD = 48_000
 _CHARS_PER_TOKEN = 3.5
-_BARS_PER_CHUNK = 50
-_OVERLAP_BARS = 2
+_BARS_PER_CHUNK = 100
+_OVERLAP_BARS = 4
 
 
 def _estimate_tokens(text: str) -> int:
@@ -916,6 +1166,21 @@ def get_arrange_precheck(
     likely_key = _detect_scale_key(available)
     if not available:
         return ArrangePrecheck(shift=shift)
+
+    if mode == "extract":
+        events, _, _ = read_midi_events(midi_path, tracks=tracks)
+        meta = read_midi_meta(midi_path, tracks=tracks)
+        key_analysis = analyze_midi_key(midi_path, tracks=tracks)
+        requires_chunking = _count_total_bars(events, meta) > _BARS_PER_CHUNK
+        prompt = build_extract_prompt(events, filename=midi_path.stem, meta=meta, key_analysis=key_analysis)
+        estimated = _estimate_tokens(prompt)
+        return ArrangePrecheck(
+            available_notes=available,
+            shift=shift,
+            estimated_tokens=estimated,
+            requires_chunking=requires_chunking,
+            likely_key=_detect_scale_key(available, key_analysis),
+        )
 
     if mode != "context":
         return ArrangePrecheck(
@@ -1584,6 +1849,131 @@ def _enforce_context_rules(
     return fixed, adjustments
 
 
+def _ai_arrange_extract(
+    midi_path: Path,
+    *,
+    tracks: list[int] | None = None,
+    api_key: str,
+    base_url: str | None = None,
+    model: str = "gpt-4o-mini",
+    on_chunk: StreamCallback | None = None,
+    should_cancel: CancelCallback | None = None,
+    cancel_state: CancellableState | None = None,
+) -> AiArrangeResult:
+    """Run extract mode: classify notes as melody/accompaniment/bass."""
+    raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
+    _raise_if_cancelled(should_cancel)
+
+    if not raw_events:
+        return AiArrangeResult(mode="extract", explanation="No notes found.")
+
+    _emit_progress(on_chunk, "[Stage analyze_key]")
+    key_analysis = analyze_midi_key(midi_path, tracks=tracks)
+    meta = read_midi_meta(midi_path, tracks=tracks)
+    _raise_if_cancelled(should_cancel)
+
+    midi_filename = midi_path.stem
+    _emit_progress(on_chunk, "[Stage build_prompt]")
+    prompt = build_extract_prompt(
+        raw_events,
+        filename=midi_filename,
+        meta=meta,
+        key_analysis=key_analysis,
+    )
+    _raise_if_cancelled(should_cancel)
+
+    estimated = _estimate_tokens(prompt)
+    requires_chunking = _count_total_bars(raw_events, meta) > _BARS_PER_CHUNK
+
+    if not requires_chunking:
+        raw = call_openai(
+            api_key, prompt, base_url=base_url, model=model,
+            on_chunk=on_chunk, max_tokens=65536,
+            should_cancel=should_cancel, cancel_state=cancel_state,
+        )
+        analysis_text, roles = _parse_extract_ai_response(raw)
+    else:
+        chunks = _split_events_into_chunks(raw_events, meta)
+        _emit_progress(on_chunk, f"[Stage split_chunks total={len(chunks)}]")
+        all_roles: list[RoleClassification] = []
+        all_raw_parts: list[str] = []
+        analysis_text = ""
+        role_index: dict[tuple[int, int], int] = {}
+        carry_melody: int | None = None
+        continuation_ctx = ""
+
+        for ci, chunk_events in enumerate(chunks):
+            _raise_if_cancelled(should_cancel)
+            chunk_prompt = build_extract_prompt(
+                chunk_events,
+                filename=midi_filename,
+                meta=meta,
+                key_analysis=key_analysis,
+                continuation_context=continuation_ctx,
+                initial_previous_melody=carry_melody,
+            )
+            if ci == 0 and not prompt:
+                prompt = chunk_prompt
+            chunk_label = f"[Chunk {ci + 1}/{len(chunks)}]"
+            if on_chunk:
+                on_chunk(f"{chunk_label} Processing...\n" + "\n".join(all_raw_parts))
+
+            def _chunk_cb(
+                accumulated: str,
+                _label: str = chunk_label,
+            ) -> None:
+                parts = list(all_raw_parts)
+                parts.append(f"{_label}\n{accumulated}")
+                on_chunk("\n\n".join(parts))
+
+            chunk_raw = call_openai(
+                api_key, chunk_prompt, base_url=base_url, model=model,
+                on_chunk=_chunk_cb if on_chunk else None,
+                max_tokens=65536,
+                should_cancel=should_cancel, cancel_state=cancel_state,
+            )
+            all_raw_parts.append(f"{chunk_label}\n{chunk_raw}")
+            chunk_analysis, chunk_roles = _parse_extract_ai_response(chunk_raw)
+            if ci == 0 and chunk_analysis:
+                analysis_text = chunk_analysis
+            for rc in chunk_roles:
+                key = (rc.time_ms, rc.note)
+                if key in role_index:
+                    all_roles[role_index[key]] = rc
+                else:
+                    role_index[key] = len(all_roles)
+                    all_roles.append(rc)
+            carry_melody = _compute_final_melody_extract(
+                chunk_events, meta, carry_melody,
+            )
+            continuation_ctx = _build_extract_continuation(chunk_roles)
+
+        roles = all_roles
+        raw = "\n\n".join(all_raw_parts)
+        if on_chunk:
+            on_chunk(raw)
+        if len(chunks) > 1:
+            analysis_text += f"\n[Processed in {len(chunks)} chunks]"
+
+    role_map: dict[tuple[int, int], str] = {}
+    for rc in roles:
+        role_map[(rc.time_ms, rc.note)] = rc.role
+
+    counts = Counter(rc.role for rc in roles)
+    summary = ", ".join(f"{r}: {c}" for r, c in sorted(counts.items()))
+    if analysis_text:
+        analysis_text += f"\n[Classification: {summary}]"
+
+    return AiArrangeResult(
+        role_map=role_map,
+        mode="extract",
+        explanation=raw,
+        analysis_text=analysis_text,
+        prompt=prompt,
+        total_notes=len(raw_events),
+    )
+
+
 def ai_arrange(
     midi_path: Path,
     mapping: MappingConfig,
@@ -1602,6 +1992,14 @@ def ai_arrange(
     cancel_state: CancellableState | None = None,
 ) -> AiArrangeResult:
     _raise_if_cancelled(should_cancel)
+
+    if mode == "extract":
+        return _ai_arrange_extract(
+            midi_path, tracks=tracks, api_key=api_key, base_url=base_url,
+            model=model, on_chunk=on_chunk, should_cancel=should_cancel,
+            cancel_state=cancel_state,
+        )
+
     available = get_available_notes(mapping, profile_id)
     if not available:
         return AiArrangeResult(mode=mode, explanation="No available notes in profile.")
@@ -1704,7 +2102,9 @@ def ai_arrange(
             all_positions: list[PositionRemap] = []
             all_raw_parts: list[str] = []
             analysis_text = ""
-            seen_positions: set[tuple[int, int]] = set()
+            position_index: dict[tuple[int, int], int] = {}
+            carry_melody: int | None = None
+            continuation_ctx = ""
             for ci, chunk_events in enumerate(chunks):
                 _raise_if_cancelled(should_cancel)
                 chunk_prompt = build_context_prompt(
@@ -1716,8 +2116,10 @@ def ai_arrange(
                     filename=midi_filename,
                     meta=meta,
                     key_analysis=key_analysis,
-                    optimal_hint="" if ci > 0 else optimal_hint,
+                    optimal_hint=optimal_hint,
                     simplify=simplify,
+                    continuation_context=continuation_ctx,
+                    initial_previous_melody=carry_melody,
                 )
                 if ci == 0 and not prompt:
                     prompt = chunk_prompt
@@ -1749,9 +2151,15 @@ def ai_arrange(
                     analysis_text = chunk_analysis
                 for pr in chunk_positions:
                     key = (pr.time_ms, pr.original)
-                    if key not in seen_positions:
-                        seen_positions.add(key)
+                    if key in position_index:
+                        all_positions[position_index[key]] = pr
+                    else:
+                        position_index[key] = len(all_positions)
                         all_positions.append(pr)
+                carry_melody = _compute_final_melody(
+                    chunk_events, shift, available_set, meta, carry_melody,
+                )
+                continuation_ctx = _build_context_continuation(chunk_positions)
             position_map = all_positions
             raw = "\n\n".join(all_raw_parts)
             if on_chunk:

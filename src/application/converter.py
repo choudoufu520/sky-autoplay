@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.domain.chart import ChartDocument, ChartEvent, ChartMetadata
 from src.domain.mapping import MappingConfig
-from src.infrastructure.midi_reader import RawMidiEvent, read_midi_events
+from src.infrastructure.midi_reader import RawMidiEvent, read_midi_events, read_midi_meta
 
 
 class MappingError(ValueError):
@@ -44,6 +44,9 @@ class ConvertOptions:
     denoise: bool = False
     denoise_max_simultaneous: int = 3
     denoise_max_chord_repeats: int = 4
+    track_roles: dict[int, str] | None = None
+    accompaniment_strategy: str = "keep"  # keep|thin|simplify|drop
+    role_map: dict[tuple[int, int], str] | None = None
 
 
 def _resolve_profile_for_event(
@@ -287,13 +290,122 @@ def _note_name_to_midi_number(name: str) -> int | None:
     return None
 
 
+def _resolve_event_role(
+    event: RawMidiEvent,
+    role_map: dict[tuple[int, int], str] | None,
+) -> str | None:
+    """Determine the role for an event: from reader tag or AI role_map."""
+    if event.role:
+        return event.role
+    if role_map:
+        return role_map.get((event.time_ms, event.note))
+    return None
+
+
+def _compute_beat_ms(midi_path: Path, tracks: list[int] | None) -> float:
+    """Return the duration of one beat in ms for strong-beat filtering."""
+    try:
+        meta = read_midi_meta(midi_path, tracks=tracks)
+        if meta.bpm > 0:
+            return 60_000.0 / meta.bpm
+    except Exception:
+        pass
+    return 500.0  # fallback 120 BPM
+
+
+def _is_strong_beat(time_ms: int, beat_ms: float) -> bool:
+    """True if time_ms falls on beat 1 or 3 of a 4-beat bar (within tolerance)."""
+    tolerance = beat_ms * 0.15
+    position_in_bar = time_ms % (beat_ms * 4)
+    for strong in (0, beat_ms * 2):
+        if abs(position_in_bar - strong) <= tolerance:
+            return True
+    return False
+
+
+def _filter_accompaniment(
+    events: list[RawMidiEvent],
+    strategy: str,
+    role_map: dict[tuple[int, int], str] | None,
+    midi_path: Path,
+    tracks: list[int] | None,
+) -> tuple[list[RawMidiEvent], int]:
+    """Filter events based on accompaniment strategy. Returns (filtered, removed_count)."""
+    if strategy == "keep":
+        return events, 0
+
+    beat_ms = _compute_beat_ms(midi_path, tracks) if strategy == "thin" else 0.0
+    kept: list[RawMidiEvent] = []
+    removed = 0
+    window_ms = 50
+
+    accomp_at_time: dict[int, list[int]] = {}
+    if strategy == "simplify":
+        for ev in events:
+            role = _resolve_event_role(ev, role_map)
+            if role == "accompaniment":
+                bucket = ev.time_ms // window_ms
+                accomp_at_time.setdefault(bucket, []).append(ev.note)
+
+    accomp_seen: dict[int, int] = {}
+
+    for ev in events:
+        role = _resolve_event_role(ev, role_map)
+
+        if role in ("melody", "bass", None):
+            kept.append(ev)
+            continue
+
+        if strategy == "drop":
+            removed += 1
+            continue
+
+        if strategy == "thin":
+            if _is_strong_beat(ev.time_ms, beat_ms):
+                kept.append(ev)
+            else:
+                removed += 1
+            continue
+
+        if strategy == "simplify":
+            bucket = ev.time_ms // window_ms
+            count = accomp_seen.get(bucket, 0)
+            if count < 2:
+                accomp_seen[bucket] = count + 1
+                kept.append(ev)
+            else:
+                removed += 1
+            continue
+
+        kept.append(ev)
+
+    return kept, removed
+
+
 def convert_midi_to_chart(
     midi_path: Path,
     mapping: MappingConfig,
     options: ConvertOptions,
 ) -> tuple[ChartDocument, list[str], DenoiseReport | None]:
-    raw_events, ppq, tempo_count = read_midi_events(midi_path, tracks=options.tracks)
+    raw_events, ppq, tempo_count = read_midi_events(
+        midi_path, tracks=options.tracks, track_roles=options.track_roles,
+    )
     warnings: list[str] = []
+
+    if options.accompaniment_strategy != "keep" and (
+        options.track_roles or options.role_map
+        or any(ev.role for ev in raw_events)
+    ):
+        raw_events, removed = _filter_accompaniment(
+            raw_events, options.accompaniment_strategy,
+            options.role_map, midi_path, options.tracks,
+        )
+        if removed:
+            warnings.append(
+                f"Accompaniment filter ({options.accompaniment_strategy}): "
+                f"removed {removed} accompaniment note(s)"
+            )
+
     chart_events: list[ChartEvent] = []
 
     pos_map = options.ai_position_map or None
