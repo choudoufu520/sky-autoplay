@@ -59,10 +59,17 @@ def _detect_scale_key(available: list[int], key_analysis: MidiKeyAnalysis | None
     return f"{_KEY_NAMES[root_pc]} major"
 
 
-def _transpose_to_key_name(transpose: int) -> str:
-    """Map a transpose offset to the in-game instrument key name."""
-    root_pc = (0 - transpose) % 12
+def transpose_to_key_name(transpose: int, profile_transpose: int = 0) -> str:
+    """Map a transpose offset to the in-game instrument key name.
+
+    *profile_transpose* is ``MappingProfile.transpose_semitones`` so the
+    displayed key accounts for any built-in transposition of the profile.
+    """
+    root_pc = (0 - transpose - profile_transpose) % 12
     return f"{_KEY_NAMES[root_pc]} major"
+
+
+_transpose_to_key_name = transpose_to_key_name
 
 
 @dataclass(slots=True)
@@ -192,6 +199,9 @@ def find_optimal_settings(
     if not raw_events:
         return []
 
+    profile = mapping.profiles.get(profile_id)
+    profile_transpose = profile.transpose_semitones if profile else 0
+
     results: list[OptimalSetting] = []
     for oct_offset in sorted(INSTRUMENT_GROUPS.keys()):
         _raise_if_cancelled(should_cancel)
@@ -205,7 +215,7 @@ def find_optimal_settings(
                     _raise_if_cancelled(should_cancel)
                 if (ev.note + shift) not in available_set:
                     unmapped += 1
-            key_name = _transpose_to_key_name(t)
+            key_name = _transpose_to_key_name(t, profile_transpose)
             results.append(OptimalSetting(
                 transpose=t,
                 octave=oct_offset,

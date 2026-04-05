@@ -254,7 +254,19 @@ def _octave_fold(note: int, mapped_notes: list[int]) -> int:
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+_KEY_NAMES = ["C", "Db", "D", "Eb", "E", "F", "F#/Gb", "G", "Ab", "A", "Bb", "B"]
+
 _JIANPU_NOTE = {0: "1", 2: "2", 4: "3", 5: "4", 7: "5", 9: "6", 11: "7"}
+
+
+def key_root_offset(transpose: int, profile_transpose: int = 0) -> tuple[str, int]:
+    """Return ``(key_name, root_pitch_class)`` for a transpose combination.
+
+    The *root_pitch_class* can be passed as ``root_offset`` to the jianpu
+    helpers so that scale degree 1 aligns with the actual key.
+    """
+    root_pc = (0 - transpose - profile_transpose) % 12
+    return _KEY_NAMES[root_pc], root_pc
 
 
 def _midi_number_to_note_name(note_number: int) -> str:
@@ -653,12 +665,14 @@ def chart_to_preview_midi(
 # ── Jianpu (numbered musical notation) export ──────────────
 
 
-def _midi_to_jianpu(note: int) -> str:
+def _midi_to_jianpu(note: int, root_offset: int = 0) -> str:
     """Convert a MIDI note number to Jianpu notation with octave markers.
 
-    Reference octave is 4 (C4 = middle C = ``1`` with no marker).
-    Higher octaves append ``'``, lower octaves append ``,``.
+    *root_offset* is the pitch-class of "do" (0 = C, 2 = D, 7 = G …).
+    The note is shifted so that the root becomes scale degree 1 and the
+    reference octave adjusts accordingly.
     """
+    note = note - root_offset
     pc = note % 12
     octave = (note // 12) - 1
 
@@ -687,15 +701,20 @@ def chart_to_jianpu(
     bpm: float = 120.0,
     time_signature: str = "4/4",
     title: str = "",
+    key: str = "C",
+    root_offset: int = 0,
 ) -> str:
     """Convert a chart to text-based Jianpu (numbered musical notation).
 
     The output uses quarter-note beat positions with sustain markers (``-``)
     and rest markers (``0``), grouped into bars separated by ``|``.
+
+    *key* / *root_offset* let the header and scale degrees reflect the
+    actual in-game instrument key rather than always showing ``1=C``.
     """
     reverse: dict[str, int] = {}
     for _pid, profile in mapping.profiles.items():
-        for note_str, key in profile.note_to_key.items():
+        for note_str, key_str in profile.note_to_key.items():
             try:
                 num = int(note_str)
             except ValueError:
@@ -703,7 +722,7 @@ def chart_to_jianpu(
                 if parsed is None:
                     continue
                 num = parsed
-            reverse.setdefault(key, num)
+            reverse.setdefault(key_str, num)
 
     ts_parts = time_signature.split("/")
     beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
@@ -724,7 +743,9 @@ def chart_to_jianpu(
         if midi_note is None:
             continue
         beat_idx = round(ev.time_ms / beat_ms)
-        grid_notes.setdefault(beat_idx, []).append(_midi_to_jianpu(midi_note))
+        grid_notes.setdefault(beat_idx, []).append(
+            _midi_to_jianpu(midi_note, root_offset)
+        )
         end = ev.time_ms + (ev.duration_ms or 0)
         if end > grid_end_ms.get(beat_idx, 0):
             grid_end_ms[beat_idx] = end
@@ -757,7 +778,7 @@ def chart_to_jianpu(
     lines: list[str] = []
     if title:
         lines.append(title)
-    lines.append(f"1=C  {time_signature}  ♩={int(bpm)}")
+    lines.append(f"1={key}  {time_signature}  ♩={int(bpm)}")
     lines.append("")
 
     bar_strs: list[str] = []
@@ -780,6 +801,8 @@ def midi_events_to_jianpu(
     bpm: float = 120.0,
     time_signature: str = "4/4",
     title: str = "",
+    key: str = "C",
+    root_offset: int = 0,
 ) -> str:
     """Convert raw MIDI events directly to Jianpu text (without key mapping).
 
@@ -802,7 +825,9 @@ def midi_events_to_jianpu(
 
     for ev in sorted_events:
         beat_idx = round(ev.time_ms / beat_ms)
-        grid_notes.setdefault(beat_idx, []).append(_midi_to_jianpu(ev.note))
+        grid_notes.setdefault(beat_idx, []).append(
+            _midi_to_jianpu(ev.note, root_offset)
+        )
         end = ev.time_ms + (ev.duration_ms or 0)
         if end > grid_end_ms.get(beat_idx, 0):
             grid_end_ms[beat_idx] = end
@@ -835,7 +860,7 @@ def midi_events_to_jianpu(
     lines: list[str] = []
     if title:
         lines.append(title)
-    lines.append(f"1=C  {time_signature}  ♩={int(bpm)}")
+    lines.append(f"1={key}  {time_signature}  ♩={int(bpm)}")
     lines.append("")
 
     bar_strs: list[str] = []
@@ -868,8 +893,9 @@ class JianpuCell:
     notes: list[JianpuNote] = field(default_factory=list)
 
 
-def _midi_to_jianpu_note(note: int) -> JianpuNote:
+def _midi_to_jianpu_note(note: int, root_offset: int = 0) -> JianpuNote:
     """Convert a MIDI note number to a structured ``JianpuNote``."""
+    note = note - root_offset
     pc = note % 12
     octave = (note // 12) - 1
 
@@ -918,6 +944,8 @@ def chart_to_jianpu_pdf(
     bpm: float = 120.0,
     time_signature: str = "4/4",
     title: str = "",
+    key: str = "C",
+    root_offset: int = 0,
 ) -> None:
     """Render a chart as a Jianpu PDF using Sky-community notation style.
 
@@ -947,7 +975,7 @@ def chart_to_jianpu_pdf(
         if midi_note is None:
             continue
         slot = round(ev.time_ms / grid_ms)
-        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note))
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note, root_offset))
 
     if not grid:
         return
@@ -973,7 +1001,7 @@ def chart_to_jianpu_pdf(
 
     _render_jianpu_pdf(
         bars, slots_per_bar, total_bars, output_path,
-        time_signature, bpm, title,
+        time_signature, bpm, title, key=key,
     )
 
 
@@ -1046,6 +1074,7 @@ def _render_jianpu_pdf(
     time_signature: str,
     bpm: float,
     title: str,
+    key: str = "C",
 ) -> None:
     from fpdf import FPDF
 
@@ -1066,7 +1095,7 @@ def _render_jianpu_pdf(
         pdf.text((_PAGE_W - tw) / 2, y + 5.5, title)
         y += 10
 
-    info = f"1=C  {time_signature}  BPM={int(bpm)}"
+    info = f"1={key}  {time_signature}  BPM={int(bpm)}"
     pdf.set_font(font, "", 11)
     tw = pdf.get_string_width(info)
     pdf.text((_PAGE_W - tw) / 2, y + 4, info)
@@ -1167,6 +1196,7 @@ def _events_to_bars(
     events: list[RawMidiEvent],
     bpm: float,
     time_signature: str,
+    root_offset: int = 0,
 ) -> tuple[list[list[JianpuCell]], int, int]:
     """Convert raw MIDI events to Jianpu bar grid.
 
@@ -1188,7 +1218,7 @@ def _events_to_bars(
     grid: dict[int, list[JianpuNote]] = {}
     for ev in sorted_events:
         slot = round(ev.time_ms / grid_ms)
-        grid.setdefault(slot, []).append(_midi_to_jianpu_note(ev.note))
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(ev.note, root_offset))
 
     if not grid:
         return [], slots_per_bar, 0
@@ -1204,6 +1234,7 @@ def _chart_to_bars(
     mapping: MappingConfig,
     bpm: float,
     time_signature: str,
+    root_offset: int = 0,
 ) -> tuple[list[list[JianpuCell]], int, int]:
     """Convert chart events to Jianpu bar grid.
 
@@ -1230,7 +1261,7 @@ def _chart_to_bars(
         if midi_note is None:
             continue
         slot = round(ev.time_ms / grid_ms)
-        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note))
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note, root_offset))
 
     if not grid:
         return [], slots_per_bar, 0
@@ -1272,14 +1303,20 @@ def compare_jianpu_pdf(
     bpm: float = 120.0,
     time_signature: str = "4/4",
     title: str = "",
+    key: str = "C",
+    root_offset: int = 0,
 ) -> None:
     """Render a comparison PDF: original MIDI vs converted chart.
 
     Each bar group shows the original on top, the converted on the bottom.
     Cells that differ between original and converted are highlighted.
     """
-    orig_bars, slots_per_bar, orig_total = _events_to_bars(raw_events, bpm, time_signature)
-    conv_bars, _, conv_total = _chart_to_bars(chart, mapping, bpm, time_signature)
+    orig_bars, slots_per_bar, orig_total = _events_to_bars(
+        raw_events, bpm, time_signature, root_offset=root_offset,
+    )
+    conv_bars, _, conv_total = _chart_to_bars(
+        chart, mapping, bpm, time_signature, root_offset=root_offset,
+    )
 
     total_bars = max(orig_total, conv_total)
     if total_bars == 0:
@@ -1292,7 +1329,7 @@ def compare_jianpu_pdf(
 
     _render_compare_jianpu_pdf(
         orig_bars, conv_bars, slots_per_bar, total_bars,
-        output_path, time_signature, bpm, title,
+        output_path, time_signature, bpm, title, key=key,
     )
 
 
@@ -1402,6 +1439,7 @@ def _render_compare_jianpu_pdf(
     time_signature: str,
     bpm: float,
     title: str,
+    key: str = "C",
 ) -> None:
     from fpdf import FPDF
 
@@ -1423,7 +1461,7 @@ def _render_compare_jianpu_pdf(
         pdf.text((_PAGE_W - tw) / 2, y + 5.5, title)
         y += 10
 
-    info = f"1=C  {time_signature}  BPM={int(bpm)}"
+    info = f"1={key}  {time_signature}  BPM={int(bpm)}"
     pdf.set_font(font, "", 11)
     tw = pdf.get_string_width(info)
     pdf.text((_PAGE_W - tw) / 2, y + 4, info)

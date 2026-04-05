@@ -152,6 +152,11 @@ class ConvertTab(QWidget):
         self.octave_spin.setRange(-4, 4)
         self.form.addRow(self.octave_label, self.octave_spin)
 
+        self.game_key_label = QLabel()
+        self.game_key_value = QLabel()
+        self.game_key_value.setObjectName("keyInfoLabel")
+        self.form.addRow(self.game_key_label, self.game_key_value)
+
         self.note_mode_label = QLabel()
         self.note_mode_combo = QComboBox()
         self.note_mode_combo.addItems(["tap", "hold"])
@@ -429,7 +434,10 @@ class ConvertTab(QWidget):
         self.mapping_edit.textChanged.connect(self._refresh_profiles)
         self._refresh_profiles()
         self.transpose_spin.valueChanged.connect(self._refresh_optimal_hint)
+        self.transpose_spin.valueChanged.connect(self._refresh_game_key)
         self.octave_spin.valueChanged.connect(self._refresh_optimal_hint)
+        self.profile_combo.currentTextChanged.connect(self._refresh_game_key)
+        self.mapping_edit.textChanged.connect(self._refresh_game_key)
         self._tracks_model.itemChanged.connect(lambda: self._refresh_optimal_hint())
         self.mapping_edit.textChanged.connect(self._refresh_optimal_hint)
 
@@ -453,6 +461,8 @@ class ConvertTab(QWidget):
         self.detected_key_label.setText(tr("convert.detected_key"))
         self.transpose_label.setText(tr("convert.transpose"))
         self.octave_label.setText(tr("convert.octave"))
+        self.game_key_label.setText(tr("convert.game_key"))
+        self._refresh_game_key()
         self.note_mode_label.setText(tr("convert.note_mode"))
         self.tracks_label.setText(tr("convert.tracks"))
 
@@ -645,6 +655,28 @@ class ConvertTab(QWidget):
 
     def _apply_suggested_transpose(self) -> None:
         self.transpose_spin.setValue(self._suggested_transpose)
+
+    def _get_profile_transpose(self) -> int:
+        """Return the current profile's ``transpose_semitones`` (0 if unavailable)."""
+        mapping_path = self.mapping_edit.text().strip()
+        if not mapping_path or not Path(mapping_path).exists():
+            return 0
+        try:
+            config = load_mapping(Path(mapping_path))
+        except Exception:
+            return 0
+        pid = self.profile_combo.currentText().strip() or config.default_profile
+        profile = config.profiles.get(pid)
+        return profile.transpose_semitones if profile else 0
+
+    def _refresh_game_key(self) -> None:
+        from src.application.ai_arranger import transpose_to_key_name
+
+        profile_transpose = self._get_profile_transpose()
+        key_name = transpose_to_key_name(
+            self.transpose_spin.value(), profile_transpose,
+        )
+        self.game_key_value.setText(key_name)
 
     def _refresh_optimal_hint(self) -> None:
         self._optimal_debounce.start()
@@ -1463,9 +1495,15 @@ class ConvertTab(QWidget):
             return
 
         try:
+            from src.application.converter import key_root_offset
+
+            key, root_off = key_root_offset(
+                self.transpose_spin.value(), self._get_profile_transpose(),
+            )
             chart_to_jianpu_pdf(
                 chart, mapping_config, Path(path),
                 bpm=bpm, time_signature=time_sig, title=title,
+                key=key, root_offset=root_off,
             )
             self.result_text.appendPlainText(tr("convert.jianpu_saved").format(path=path))
         except Exception as exc:
@@ -1511,12 +1549,17 @@ class ConvertTab(QWidget):
             return
 
         try:
+            from src.application.converter import key_root_offset
             from src.infrastructure.midi_reader import read_midi_events
 
+            key, root_off = key_root_offset(
+                self.transpose_spin.value(), self._get_profile_transpose(),
+            )
             raw_events, _, _ = read_midi_events(Path(midi_path), tracks=tracks)
             compare_jianpu_pdf(
                 chart, mapping_config, raw_events, Path(save_path),
                 bpm=bpm, time_signature=time_sig, title=title,
+                key=key, root_offset=root_off,
             )
             self.result_text.appendPlainText(
                 tr("convert.compare_pdf_saved").format(path=save_path),

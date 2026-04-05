@@ -23,6 +23,7 @@ from src.application.ai_arranger import (
     parse_ai_response,
     parse_context_response,
     parse_remap_response,
+    transpose_to_key_name,
     validate_note_map,
     validate_position_map,
 )
@@ -601,3 +602,28 @@ class TestChunkingAndContextRules:
 
         assert count >= 1
         assert fixed[1].replacement < fixed[0].replacement
+
+
+class TestTransposeToKeyName:
+    def test_no_transpose_is_c_major(self):
+        assert transpose_to_key_name(0) == "C major"
+
+    def test_transpose_minus2_is_d_major(self):
+        assert transpose_to_key_name(-2) == "D major"
+
+    def test_transpose_plus5_is_g_major(self):
+        assert transpose_to_key_name(5) == "G major"
+        assert transpose_to_key_name(-7) == "G major"
+
+    def test_profile_transpose_shifts_key(self):
+        assert transpose_to_key_name(0, profile_transpose=3) == "A major"
+
+    def test_combined_transpose(self):
+        result = transpose_to_key_name(-2, profile_transpose=3)
+        root = (0 - (-2) - 3) % 12
+        assert root == 11
+        assert result == "B major"
+
+    def test_wrap_around(self):
+        assert transpose_to_key_name(0, profile_transpose=0) == "C major"
+        assert transpose_to_key_name(-12, profile_transpose=0) == "C major"
