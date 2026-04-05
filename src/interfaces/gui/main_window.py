@@ -26,6 +26,7 @@ from src.interfaces.gui.tabs.convert_tab import ConvertTab
 from src.interfaces.gui.tabs.mapping_tab import MappingTab
 from src.interfaces.gui.tabs.play_tab import PlayTab
 from src.interfaces.gui.tabs.preview_tab import PreviewTab
+from src.interfaces.gui.tabs.simulate_tab import SimulateTab
 from src.interfaces.gui.tabs.tracks_tab import TracksTab
 from src.interfaces.gui.workers.update_worker import CheckUpdateWorker, DownloadUpdateWorker
 
@@ -57,12 +58,14 @@ class MainWindow(QMainWindow):
         self.convert_tab = ConvertTab()
         self.preview_tab = PreviewTab()
         self.play_tab = PlayTab()
+        self.simulate_tab = SimulateTab()
         self.mapping_tab = MappingTab()
 
         self.tabs.addTab(self.tracks_tab, "")
         self.tabs.addTab(self.convert_tab, "")
         self.tabs.addTab(self.preview_tab, "")
         self.tabs.addTab(self.play_tab, "")
+        self.tabs.addTab(self.simulate_tab, "")
         self.tabs.addTab(self.mapping_tab, "")
 
         layout.addWidget(self.tabs)
@@ -114,7 +117,8 @@ class MainWindow(QMainWindow):
         self.tabs.setTabText(1, tr("tab.convert"))
         self.tabs.setTabText(2, tr("tab.preview"))
         self.tabs.setTabText(3, tr("tab.play"))
-        self.tabs.setTabText(4, tr("tab.mapping"))
+        self.tabs.setTabText(4, tr("tab.simulate"))
+        self.tabs.setTabText(5, tr("tab.mapping"))
         self.status_label.setText(tr("status.ready"))
         self.lang_menu.setTitle(tr("menu.language"))
         self.theme_menu.setTitle(tr("menu.theme"))
@@ -146,6 +150,10 @@ class MainWindow(QMainWindow):
 
     def _on_chart_saved(self, path: str) -> None:
         self.play_tab.set_chart_path(path)
+        self.simulate_tab.set_chart_path(path)
+        mapping_path = self.convert_tab.mapping_edit.text().strip()
+        if mapping_path:
+            self.simulate_tab.set_mapping_path(mapping_path, auto_load=True)
         self.status_label.setText(tr("status.chart_saved").format(path=path))
         self.tabs.setCurrentWidget(self.play_tab)
 

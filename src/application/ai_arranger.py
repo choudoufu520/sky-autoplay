@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from collections import Counter
 from collections.abc import Callable
@@ -8,7 +9,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from src.domain.mapping import MappingConfig
-from src.infrastructure.midi_reader import MidiMeta, RawMidiEvent, read_midi_events, read_midi_meta
+from src.infrastructure.midi_reader import (
+    MidiKeyAnalysis,
+    MidiMeta,
+    RawMidiEvent,
+    analyze_midi_key,
+    read_midi_events,
+    read_midi_meta,
+)
 
 _PITCH_CLASSES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
@@ -26,12 +34,23 @@ INSTRUMENT_GROUPS: dict[int, list[str]] = {
 
 MUSIC_KEY_WIKI = "https://sky-children-of-the-light.fandom.com/wiki/Music_Key"
 
+logger = logging.getLogger(__name__)
 
-def _midi_to_name(n: int) -> str:
+
+def midi_to_name(n: int) -> str:
     return f"{_PITCH_CLASSES[n % 12]}{n // 12 - 1}"
 
 
-def _detect_scale_key(available: list[int]) -> str:
+def _midi_to_name(n: int) -> str:
+    return midi_to_name(n)
+
+
+def _detect_scale_key(available: list[int], key_analysis: MidiKeyAnalysis | None = None) -> str:
+    if key_analysis:
+        if key_analysis.detected_key and key_analysis.detected_mode:
+            return f"{key_analysis.detected_key} {key_analysis.detected_mode}"
+        if key_analysis.key_signature:
+            return key_analysis.key_signature
     if not available:
         return "C major"
     root_pc = available[0] % 12
@@ -63,7 +82,30 @@ class AiArrangeResult:
     total_notes: int = 0
 
 
-def _get_available_notes(mapping: MappingConfig, profile_id: str) -> list[int]:
+@dataclass(slots=True)
+class ArrangePrecheck:
+    available_notes: list[int] = field(default_factory=list)
+    shift: int = 0
+    estimated_tokens: int = 0
+    requires_chunking: bool = False
+    likely_key: str = "C major"
+
+
+class AiArrangeCancelled(RuntimeError):
+    """Raised when the user cancels an in-flight AI arrangement."""
+
+
+class AiArrangeError(RuntimeError):
+    """Structured user-facing error for AI arrangement failures."""
+
+    def __init__(self, code: str, user_message: str, *, detail: str = "") -> None:
+        super().__init__(user_message)
+        self.code = code
+        self.user_message = user_message
+        self.detail = detail
+
+
+def get_available_notes(mapping: MappingConfig, profile_id: str) -> list[int]:
     profile = mapping.profiles.get(profile_id)
     if profile is None:
         return []
@@ -77,11 +119,19 @@ def _get_available_notes(mapping: MappingConfig, profile_id: str) -> list[int]:
     return available
 
 
-def _get_shift(mapping: MappingConfig, profile_id: str, transpose: int, octave: int) -> int:
+def _get_available_notes(mapping: MappingConfig, profile_id: str) -> list[int]:
+    return get_available_notes(mapping, profile_id)
+
+
+def get_shift(mapping: MappingConfig, profile_id: str, transpose: int, octave: int) -> int:
     profile = mapping.profiles.get(profile_id)
     if profile is None:
         return 0
     return profile.transpose_semitones + transpose + (profile.octave_shift + octave) * 12
+
+
+def _get_shift(mapping: MappingConfig, profile_id: str, transpose: int, octave: int) -> int:
+    return get_shift(mapping, profile_id, transpose, octave)
 
 
 def analyze_unmapped_notes(
@@ -162,13 +212,19 @@ def find_optimal_settings(
 # ── Remap mode ──────────────────────────────────────────────
 
 
-def _format_midi_meta(meta: MidiMeta, filename: str) -> str:
+def _format_midi_meta(
+    meta: MidiMeta,
+    filename: str,
+    key_analysis: MidiKeyAnalysis | None = None,
+) -> str:
     parts: list[str] = []
     if filename:
         parts.append(f"MIDI file: {filename}")
     parts.append(f"BPM: {meta.bpm}, Time signature: {meta.time_signature}")
     if meta.key_signature:
         parts.append(f"Key signature (from MIDI): {meta.key_signature}")
+    elif key_analysis and key_analysis.detected_key and key_analysis.detected_mode:
+        parts.append(f"Detected key: {key_analysis.detected_key} {key_analysis.detected_mode}")
     parts.append(f"Total notes: {meta.total_notes}, Duration: {meta.duration_sec}s")
     header = "\n".join(parts)
     song_hint = (
@@ -214,6 +270,7 @@ def build_remap_prompt(
     style: str = "conservative",
     filename: str = "",
     meta: MidiMeta | None = None,
+    key_analysis: MidiKeyAnalysis | None = None,
     optimal_hint: str = "",
     simplify: bool = False,
 ) -> str:
@@ -224,7 +281,7 @@ def build_remap_prompt(
 
     avail_min = min(available)
     avail_max = max(available)
-    scale_key = _detect_scale_key(available)
+    scale_key = _detect_scale_key(available, key_analysis)
     style_block = _get_style_block(style)
 
     drop_hint = ""
@@ -233,7 +290,7 @@ def build_remap_prompt(
 
     simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
-    meta_block = _format_midi_meta(meta, filename) if meta else ""
+    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
 
     total_unmapped = sum(unmapped_counts[n] for n in unmapped)
     high_freq = [n for n in unmapped if unmapped_counts[n] >= max(3, total_unmapped * 0.1)]
@@ -259,11 +316,91 @@ def build_remap_prompt(
     })
 
 
+def _snap_replacement(note: int, available: list[int]) -> int:
+    """Snap an invalid replacement to the nearest available note."""
+    best = available[0]
+    best_dist = abs(note - best)
+    for n in available:
+        d = abs(note - n)
+        if d < best_dist:
+            best = n
+            best_dist = d
+    return best
+
+
+def validate_note_map(
+    note_map: dict[int, int],
+    available_set: set[int],
+    available_sorted: list[int],
+) -> tuple[dict[int, int], int]:
+    """Fix replacements not in the available set. Returns (fixed_map, fix_count)."""
+    fixed: dict[int, int] = {}
+    fix_count = 0
+    for orig, repl in note_map.items():
+        if repl == -1 or repl in available_set:
+            fixed[orig] = repl
+        else:
+            fixed[orig] = _snap_replacement(repl, available_sorted)
+            fix_count += 1
+    return fixed, fix_count
+
+
+def validate_position_map(
+    position_map: list[PositionRemap],
+    available_set: set[int],
+    available_sorted: list[int],
+) -> tuple[list[PositionRemap], int]:
+    """Fix replacements not in the available set. Returns (fixed_list, fix_count)."""
+    fixed: list[PositionRemap] = []
+    fix_count = 0
+    for pr in position_map:
+        if pr.replacement == -1 or pr.replacement in available_set:
+            fixed.append(pr)
+        else:
+            corrected = _snap_replacement(pr.replacement, available_sorted)
+            fixed.append(PositionRemap(pr.time_ms, pr.original, corrected))
+            fix_count += 1
+    return fixed, fix_count
+
+
+def _extract_balanced(text: str, open_ch: str, close_ch: str) -> str | None:
+    """Extract the first balanced block delimited by *open_ch*/*close_ch*.
+
+    Handles nested braces and skips characters inside JSON string literals.
+    """
+    start = text.find(open_ch)
+    if start < 0:
+        return None
+    depth = 0
+    in_string = False
+    escape = False
+    for i in range(start, len(text)):
+        ch = text[i]
+        if escape:
+            escape = False
+            continue
+        if ch == "\\":
+            escape = True
+            continue
+        if ch == '"':
+            in_string = not in_string
+            continue
+        if in_string:
+            continue
+        if ch == open_ch:
+            depth += 1
+        elif ch == close_ch:
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return text[start:]
+
+
 def parse_remap_response(response: str) -> dict[int, int]:
     text = _extract_clean_text(response)
-    match = re.search(r"\{[^{}]*\}", text, re.DOTALL)
-    if match:
-        text = match.group(0)
+    block = _extract_balanced(text, "{", "}")
+    if block:
+        text = block
     else:
         idx = text.find("{")
         if idx >= 0:
@@ -280,34 +417,79 @@ def parse_remap_response(response: str) -> dict[int, int]:
 
 
 @dataclass(slots=True)
+class _GroupedNote:
+    final_note: int
+    duration_ms: int
+    velocity: int
+    status: str
+
+
+@dataclass(slots=True)
 class _NoteGroup:
     """Notes sounding at approximately the same time."""
     time_ms: int
-    notes: list[tuple[int, int, str]]  # (final_note, duration_ms, status)
+    notes: list[_GroupedNote]
+
+
+def _group_threshold_ms(meta: MidiMeta | None) -> int:
+    if meta and meta.bpm > 0:
+        beat_ms = 60_000 / meta.bpm
+        return int(min(max(beat_ms * 0.08, 20), 60))
+    return 30
 
 
 def _group_notes_by_time(
     events: list[RawMidiEvent],
     shift: int,
     available_set: set[int],
-    threshold_ms: int = 30,
+    meta: MidiMeta | None = None,
+    threshold_ms: int | None = None,
 ) -> list[_NoteGroup]:
     """Group simultaneous notes together (within threshold_ms)."""
     if not events:
         return []
+    threshold = _group_threshold_ms(meta) if threshold_ms is None else threshold_ms
     groups: list[_NoteGroup] = []
     current = _NoteGroup(time_ms=events[0].time_ms, notes=[])
     for ev in events:
         final = ev.note + shift
         status = "OK" if final in available_set else "UNMAPPED"
-        if ev.time_ms - current.time_ms > threshold_ms:
+        if ev.time_ms - current.time_ms > threshold:
             if current.notes:
                 groups.append(current)
             current = _NoteGroup(time_ms=ev.time_ms, notes=[])
-        current.notes.append((final, ev.duration_ms, status))
+        current.notes.append(
+            _GroupedNote(
+                final_note=final,
+                duration_ms=ev.duration_ms,
+                velocity=ev.velocity,
+                status=status,
+            )
+        )
     if current.notes:
         groups.append(current)
     return groups
+
+
+def _choose_melody_note(group: _NoteGroup, previous_melody: int | None) -> int:
+    best_note = group.notes[0].final_note
+    best_score = float("-inf")
+    for note in group.notes:
+        score = float(note.final_note)
+        score += min(note.velocity, 127) / 8.0
+        score += min(note.duration_ms, 1200) / 150.0
+        if previous_melody is not None:
+            distance = abs(note.final_note - previous_melody)
+            if distance <= 5:
+                score += 5.0
+            elif distance <= 12:
+                score += 2.0
+            elif distance >= 19:
+                score -= 3.0
+        if score > best_score:
+            best_score = score
+            best_note = note.final_note
+    return best_note
 
 
 def _format_grouped_sequence(
@@ -327,19 +509,26 @@ def _format_grouped_sequence(
 
     lines: list[str] = []
     current_bar = 0
+    previous_melody: int | None = None
     for g in groups:
         bar_num = int(g.time_ms / bar_ms) + 1
         if bar_num != current_bar:
             current_bar = bar_num
             lines.append(f"\n--- Bar {bar_num} ---")
 
-        highest = max(n[0] for n in g.notes)
+        melody_note = _choose_melody_note(g, previous_melody)
+        previous_melody = melody_note
         parts: list[str] = []
-        for note, dur, status in sorted(g.notes, key=lambda x: x[0]):
-            tag = f" [{status}]"
-            if note == highest:
+        for grouped in sorted(g.notes, key=lambda x: x.final_note):
+            tag = f" [{grouped.status}]"
+            if grouped.final_note == melody_note:
                 tag += " [MELODY]"
-            parts.append(f"{note}({_midi_to_name(note)}) dur={dur}ms{tag}")
+            if grouped.velocity >= 100:
+                tag += " [ACCENT]"
+            parts.append(
+                f"{grouped.final_note}({midi_to_name(grouped.final_note)}) "
+                f"dur={grouped.duration_ms}ms vel={grouped.velocity}{tag}"
+            )
         lines.append(f"[t={g.time_ms}ms] {' | '.join(parts)}")
     return "\n".join(lines)
 
@@ -352,17 +541,18 @@ def build_context_prompt(
     style: str = "conservative",
     filename: str = "",
     meta: MidiMeta | None = None,
+    key_analysis: MidiKeyAnalysis | None = None,
     optimal_hint: str = "",
     simplify: bool = False,
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
-    groups = _group_notes_by_time(events, shift, available_set)
+    groups = _group_notes_by_time(events, shift, available_set, meta=meta)
     sequence_text = _format_grouped_sequence(groups, meta)
 
     avail_min = min(available)
     avail_max = max(available)
-    scale_key = _detect_scale_key(available)
+    scale_key = _detect_scale_key(available, key_analysis)
     style_block = _get_style_block(style)
 
     drop_hint = ""
@@ -371,7 +561,7 @@ def build_context_prompt(
 
     simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
-    meta_block = _format_midi_meta(meta, filename) if meta else ""
+    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
 
     templates = _load_templates()
     template = templates.get("context_template", "")
@@ -391,9 +581,9 @@ def build_context_prompt(
 
 def parse_context_response(response: str) -> list[PositionRemap]:
     text = _extract_clean_text(response)
-    match = re.search(r"\[.*\]", text, re.DOTALL)
-    if match:
-        text = match.group(0)
+    block = _extract_balanced(text, "[", "]")
+    if block:
+        text = block
     else:
         idx = text.find("[")
         if idx >= 0:
@@ -445,6 +635,23 @@ def parse_analysis_and_json(response: str) -> tuple[str, str]:
         return response[:json_start].strip(), response[json_start:].strip()
 
     return "", response.strip()
+
+
+def parse_ai_response(
+    response: str,
+    mode: str,
+) -> tuple[str, dict[int, int], list[PositionRemap]]:
+    analysis_text, json_text = parse_analysis_and_json(response)
+    try:
+        if mode == "context":
+            return analysis_text, {}, parse_context_response(json_text) if json_text else []
+        return analysis_text, parse_remap_response(json_text) if json_text else {}, []
+    except (ValueError, TypeError, json.JSONDecodeError) as exc:
+        raise AiArrangeError(
+            "invalid_response",
+            "AI 返回内容无法解析，请重试或调整提示词。",
+            detail=str(exc),
+        ) from exc
 
 
 def build_retry_prompt(
@@ -516,6 +723,19 @@ def _repair_json_array(text: str) -> str | None:
 
 def _repair_json_object(text: str) -> str | None:
     """Find the last complete key-value pair in a truncated JSON object."""
+    pos = len(text)
+    for _ in range(40):
+        comma_pos = text.rfind(",", 0, pos)
+        if comma_pos < 0:
+            break
+        candidate = text[:comma_pos].rstrip() + "}"
+        try:
+            json.loads(candidate)
+            return candidate
+        except json.JSONDecodeError:
+            pos = comma_pos
+            continue
+
     search_chars = ('"', "}", "]")
     pos = len(text)
     for _ in range(30):
@@ -545,7 +765,183 @@ def _normalize_base_url(url: str) -> str:
     return url
 
 
+_CONTEXT_TOKEN_THRESHOLD = 24_000
+_CHARS_PER_TOKEN = 3.5
+_BARS_PER_CHUNK = 50
+_OVERLAP_BARS = 2
+
+
+def _estimate_tokens(text: str) -> int:
+    return int(len(text) / _CHARS_PER_TOKEN)
+
+
+def _raise_if_cancelled(should_cancel: Callable[[], bool] | None) -> None:
+    if should_cancel and should_cancel():
+        raise AiArrangeCancelled("AI 编曲已取消")
+
+
+def _describe_exception(exc: Exception) -> str:
+    text = str(exc).strip()
+    return f"{type(exc).__name__}: {text}" if text else type(exc).__name__
+
+
+def get_arrange_precheck(
+    midi_path: Path,
+    mapping: MappingConfig,
+    profile_id: str,
+    transpose: int = 0,
+    octave: int = 0,
+    single_track: int | None = None,
+    mode: str = "remap",
+    style: str = "conservative",
+    simplify: bool = False,
+) -> ArrangePrecheck:
+    available = get_available_notes(mapping, profile_id)
+    shift = get_shift(mapping, profile_id, transpose, octave)
+    likely_key = _detect_scale_key(available)
+    if not available:
+        return ArrangePrecheck(shift=shift)
+
+    if mode != "context":
+        return ArrangePrecheck(
+            available_notes=available,
+            shift=shift,
+            likely_key=likely_key,
+        )
+
+    events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    meta = read_midi_meta(midi_path, single_track=single_track)
+    key_analysis = analyze_midi_key(midi_path, single_track=single_track)
+    prompt = build_context_prompt(
+        available,
+        events,
+        shift,
+        set(available),
+        style=style,
+        filename=midi_path.stem,
+        meta=meta,
+        key_analysis=key_analysis,
+        simplify=simplify,
+    )
+    estimated = _estimate_tokens(prompt)
+    return ArrangePrecheck(
+        available_notes=available,
+        shift=shift,
+        estimated_tokens=estimated,
+        requires_chunking=estimated > _CONTEXT_TOKEN_THRESHOLD,
+        likely_key=_detect_scale_key(available, key_analysis),
+    )
+
+
+def _get_bar_ms(meta: MidiMeta | None) -> float:
+    if meta and meta.bpm > 0:
+        try:
+            parts = meta.time_signature.split("/")
+            beats = int(parts[0])
+        except (ValueError, IndexError):
+            beats = 4
+        return (60_000 / meta.bpm) * beats
+    return 2000.0
+
+
+def _find_phrase_boundary(events: list[RawMidiEvent], target_ms: float, bar_ms: float) -> float:
+    if len(events) < 2:
+        return target_ms
+    search_window = bar_ms * 1.5
+    best_gap = 0
+    best_boundary: float | None = None
+    previous = events[0].time_ms
+    for ev in events[1:]:
+        if target_ms - search_window <= ev.time_ms <= target_ms + search_window:
+            gap = ev.time_ms - previous
+            if gap > best_gap:
+                best_gap = gap
+                best_boundary = float(ev.time_ms)
+        previous = ev.time_ms
+    if best_boundary is not None and best_gap >= max(120, int(bar_ms * 0.15)):
+        return best_boundary
+    return target_ms
+
+
+def _split_events_into_chunks(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+    bars_per_chunk: int = _BARS_PER_CHUNK,
+    overlap_bars: int = _OVERLAP_BARS,
+) -> list[list[RawMidiEvent]]:
+    """Split events into bar-based chunks with overlap."""
+    if not events:
+        return []
+    bar_ms = _get_bar_ms(meta)
+    last_time = events[-1].time_ms
+    total_bars = int(last_time / bar_ms) + 1
+
+    if total_bars <= bars_per_chunk:
+        return [events]
+
+    chunks: list[list[RawMidiEvent]] = []
+    bar_start = 0
+    while bar_start < total_bars:
+        bar_end = min(bar_start + bars_per_chunk, total_bars)
+        t_start = bar_start * bar_ms
+        t_end = _find_phrase_boundary(events, bar_end * bar_ms, bar_ms)
+        chunk = [ev for ev in events if t_start <= ev.time_ms < t_end]
+        if chunk:
+            chunks.append(chunk)
+        bar_start = bar_end - overlap_bars
+        if bar_start >= total_bars:
+            break
+    return chunks
+
+
 StreamCallback = Callable[[str], None]
+CancelCallback = Callable[[], bool]
+
+
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 2.0
+
+
+def _is_retryable(exc: Exception) -> bool:
+    try:
+        import httpx
+    except Exception:
+        httpx = None  # type: ignore[assignment]
+
+    status_code = getattr(exc, "status_code", None)
+    if isinstance(status_code, int) and status_code in {408, 409, 429, 500, 502, 503, 504}:
+        return True
+    if httpx and isinstance(
+        exc,
+        (
+            httpx.TimeoutException,
+            httpx.NetworkError,
+            httpx.RemoteProtocolError,
+            httpx.ReadError,
+            httpx.WriteError,
+        ),
+    ):
+        return True
+    cause = exc.__cause__
+    if isinstance(cause, Exception) and cause is not exc and _is_retryable(cause):
+        return True
+    cls_name = type(exc).__name__
+    return cls_name in (
+        "APIConnectionError", "RateLimitError", "APITimeoutError",
+        "InternalServerError",
+    )
+
+
+def _sleep_with_cancel(delay: float, should_cancel: CancelCallback | None) -> None:
+    import time
+
+    deadline = time.monotonic() + delay
+    while True:
+        _raise_if_cancelled(should_cancel)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        time.sleep(min(0.2, remaining))
 
 
 def call_openai(
@@ -555,6 +951,7 @@ def call_openai(
     model: str = "gpt-4o-mini",
     on_chunk: StreamCallback | None = None,
     max_tokens: int = 16384,
+    should_cancel: CancelCallback | None = None,
 ) -> str:
     import httpx
     from openai import OpenAI, BadRequestError
@@ -574,29 +971,194 @@ def call_openai(
         "stream": True,
     }
 
-    try:
-        stream = client.chat.completions.create(**create_kwargs)
-    except BadRequestError:
-        create_kwargs.pop("max_tokens", None)
-        stream = client.chat.completions.create(**create_kwargs)
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            _raise_if_cancelled(should_cancel)
+            try:
+                stream = client.chat.completions.create(**create_kwargs)
+            except BadRequestError:
+                kw = dict(create_kwargs)
+                kw.pop("max_tokens", None)
+                stream = client.chat.completions.create(**kw)
 
-    parts: list[str] = []
-    accumulated = ""
-    for chunk in stream:
-        if chunk.choices and chunk.choices[0].delta.content:
-            text = chunk.choices[0].delta.content
-            parts.append(text)
+            parts: list[str] = []
+            accumulated = ""
+            for chunk in stream:
+                _raise_if_cancelled(should_cancel)
+                if chunk.choices and chunk.choices[0].delta.content:
+                    text = chunk.choices[0].delta.content
+                    parts.append(text)
+                    if on_chunk:
+                        accumulated += text
+                        on_chunk(accumulated)
+
+            content = accumulated if accumulated else "".join(parts)
+            if not content:
+                raise ValueError("AI returned empty content (streaming)")
+            return content
+        except AiArrangeCancelled:
+            logger.info("AI arrangement cancelled during streaming")
+            raise
+        except Exception as exc:
+            logger.warning("OpenAI request attempt %s failed: %s", attempt + 1, _describe_exception(exc))
+            if not _is_retryable(exc) or attempt >= _MAX_RETRIES - 1:
+                if isinstance(exc, BadRequestError):
+                    raise AiArrangeError(
+                        "bad_request",
+                        "AI 请求被服务端拒绝，请检查模型配置或缩短上下文。",
+                        detail=_describe_exception(exc),
+                    ) from exc
+                raise AiArrangeError(
+                    "request_failed",
+                    f"AI 请求失败：{type(exc).__name__}",
+                    detail=_describe_exception(exc),
+                ) from exc
+            last_exc = exc
+            delay = _RETRY_BASE_DELAY * (2 ** attempt)
             if on_chunk:
-                accumulated += text
-                on_chunk(accumulated)
+                on_chunk(f"[Retry {attempt + 1}/{_MAX_RETRIES} after {type(exc).__name__}, waiting {delay:.0f}s...]")
+            _sleep_with_cancel(delay, should_cancel)
 
-    content = accumulated if accumulated else "".join(parts)
-    if not content:
-        raise ValueError("AI returned empty content (streaming)")
-    return content
+    raise last_exc  # type: ignore[misc]
 
 
 # ── Main entry ──────────────────────────────────────────────
+
+
+def _find_directional_candidate(
+    current: int,
+    previous: int,
+    original_delta: int,
+    available_sorted: list[int],
+    blocked: set[int],
+) -> int | None:
+    candidates: list[tuple[int, int, int]] = []
+    for candidate in available_sorted:
+        if candidate in blocked:
+            continue
+        candidate_delta = candidate - previous
+        if original_delta > 0 and candidate_delta <= 0:
+            continue
+        if original_delta < 0 and candidate_delta >= 0:
+            continue
+        candidates.append(
+            (
+                abs(candidate - current),
+                abs(abs(candidate_delta) - abs(original_delta)),
+                candidate,
+            )
+        )
+    if not candidates:
+        return None
+    candidates.sort()
+    return candidates[0][2]
+
+
+def _find_non_clashing_replacement(
+    original: int,
+    current: int,
+    available_sorted: list[int],
+    occupied: set[int],
+) -> int:
+    candidates = sorted(
+        available_sorted,
+        key=lambda candidate: (abs(candidate - current), abs(candidate - original), candidate),
+    )
+    for candidate in candidates:
+        if candidate in occupied:
+            continue
+        if any(abs(candidate - other) == 1 for other in occupied):
+            continue
+        return candidate
+    return current
+
+
+def _enforce_context_rules(
+    position_map: list[PositionRemap],
+    events: list[RawMidiEvent],
+    shift: int,
+    available_set: set[int],
+    available_sorted: list[int],
+    meta: MidiMeta | None,
+) -> tuple[list[PositionRemap], int]:
+    if not position_map:
+        return position_map, 0
+
+    groups = _group_notes_by_time(events, shift, available_set, meta=meta)
+    replacements = {(pr.time_ms, pr.original): pr.replacement for pr in position_map}
+    adjustments = 0
+    previous_melody_original: int | None = None
+    previous_melody_replacement: int | None = None
+
+    for group in groups:
+        melody_original = _choose_melody_note(group, previous_melody_original)
+        effective: dict[int, int] = {}
+        for note in group.notes:
+            key = (group.time_ms, note.final_note)
+            if key in replacements:
+                effective[note.final_note] = replacements[key]
+            elif note.final_note in available_set:
+                effective[note.final_note] = note.final_note
+
+        melody_replacement = effective.get(melody_original)
+        melody_key = (group.time_ms, melody_original)
+        if melody_replacement is not None and melody_replacement != -1:
+            if previous_melody_original is not None and previous_melody_replacement is not None:
+                original_delta = melody_original - previous_melody_original
+                replacement_delta = melody_replacement - previous_melody_replacement
+                if (
+                    original_delta != 0
+                    and replacement_delta != 0
+                    and ((original_delta > 0 > replacement_delta) or (original_delta < 0 < replacement_delta))
+                ):
+                    candidate = _find_directional_candidate(
+                        melody_replacement,
+                        previous_melody_replacement,
+                        original_delta,
+                        available_sorted,
+                        {
+                            repl
+                            for note, repl in effective.items()
+                            if note != melody_original and repl != -1
+                        },
+                    )
+                    if candidate is not None and candidate != melody_replacement and melody_key in replacements:
+                        replacements[melody_key] = candidate
+                        effective[melody_original] = candidate
+                        melody_replacement = candidate
+                        adjustments += 1
+
+            previous_melody_original = melody_original
+            previous_melody_replacement = melody_replacement
+
+        for note in sorted(group.notes, key=lambda item: (item.final_note == melody_original, item.final_note)):
+            key = (group.time_ms, note.final_note)
+            replacement = effective.get(note.final_note)
+            if replacement is None or replacement == -1:
+                continue
+            occupied = {
+                repl
+                for original, repl in effective.items()
+                if original != note.final_note and repl != -1
+            }
+            if any(abs(replacement - other) == 1 for other in occupied):
+                candidate = _find_non_clashing_replacement(
+                    note.final_note,
+                    replacement,
+                    available_sorted,
+                    occupied,
+                )
+                if candidate != replacement and key in replacements:
+                    replacements[key] = candidate
+                    effective[note.final_note] = candidate
+                    adjustments += 1
+
+    fixed = [
+        PositionRemap(pr.time_ms, pr.original, replacements.get((pr.time_ms, pr.original), pr.replacement))
+        for pr in position_map
+    ]
+    return fixed, adjustments
 
 
 def ai_arrange(
@@ -613,14 +1175,17 @@ def ai_arrange(
     style: str = "conservative",
     simplify: bool = False,
     on_chunk: StreamCallback | None = None,
+    should_cancel: CancelCallback | None = None,
 ) -> AiArrangeResult:
-    available = _get_available_notes(mapping, profile_id)
+    _raise_if_cancelled(should_cancel)
+    available = get_available_notes(mapping, profile_id)
     if not available:
         return AiArrangeResult(mode=mode, explanation="No available notes in profile.")
 
     available_set = set(available)
-    shift = _get_shift(mapping, profile_id, transpose, octave)
+    shift = get_shift(mapping, profile_id, transpose, octave)
     raw_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    key_analysis = analyze_midi_key(midi_path, single_track=single_track)
 
     unmapped_counts: Counter[int] = Counter()
     for ev in raw_events:
@@ -656,17 +1221,96 @@ def ai_arrange(
                     f"would reduce unmapped events to {best.unmapped_count}. "
                     f"You may mention this in your Analysis if the difference is significant.\n"
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Unable to compute optimal settings: %s", _describe_exception(exc))
 
     if mode == "context":
-        prompt = build_context_prompt(available, raw_events, shift, available_set, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint, simplify=simplify)
-        raw = call_openai(
-            api_key, prompt, base_url=base_url, model=model,
-            on_chunk=on_chunk, max_tokens=65536,
+        prompt = build_context_prompt(
+            available,
+            raw_events,
+            shift,
+            available_set,
+            style=style,
+            filename=midi_filename,
+            meta=meta,
+            key_analysis=key_analysis,
+            optimal_hint=optimal_hint,
+            simplify=simplify,
         )
-        analysis_text, json_text = parse_analysis_and_json(raw)
-        position_map = parse_context_response(json_text) if json_text else []
+        estimated = _estimate_tokens(prompt)
+
+        if estimated <= _CONTEXT_TOKEN_THRESHOLD:
+            raw = call_openai(
+                api_key,
+                prompt,
+                base_url=base_url,
+                model=model,
+                on_chunk=on_chunk,
+                max_tokens=65536,
+                should_cancel=should_cancel,
+            )
+            analysis_text, _, position_map = parse_ai_response(raw, "context")
+        else:
+            chunks = _split_events_into_chunks(raw_events, meta)
+            all_positions: list[PositionRemap] = []
+            all_raw_parts: list[str] = []
+            analysis_text = ""
+            seen_positions: set[tuple[int, int]] = set()
+            for ci, chunk_events in enumerate(chunks):
+                _raise_if_cancelled(should_cancel)
+                chunk_prompt = build_context_prompt(
+                    available,
+                    chunk_events,
+                    shift,
+                    available_set,
+                    style=style,
+                    filename=midi_filename,
+                    meta=meta,
+                    key_analysis=key_analysis,
+                    optimal_hint="" if ci > 0 else optimal_hint,
+                    simplify=simplify,
+                )
+                chunk_label = f"[Chunk {ci + 1}/{len(chunks)}]"
+                if on_chunk:
+                    on_chunk(f"{chunk_label} Processing...\n" + "\n".join(all_raw_parts))
+                chunk_raw = call_openai(
+                    api_key,
+                    chunk_prompt,
+                    base_url=base_url,
+                    model=model,
+                    on_chunk=None,
+                    max_tokens=65536,
+                    should_cancel=should_cancel,
+                )
+                all_raw_parts.append(f"{chunk_label}\n{chunk_raw}")
+                chunk_analysis, _, chunk_positions = parse_ai_response(chunk_raw, "context")
+                if ci == 0 and chunk_analysis:
+                    analysis_text = chunk_analysis
+                for pr in chunk_positions:
+                    key = (pr.time_ms, pr.original)
+                    if key not in seen_positions:
+                        seen_positions.add(key)
+                        all_positions.append(pr)
+            position_map = all_positions
+            raw = "\n\n".join(all_raw_parts)
+            if on_chunk:
+                on_chunk(raw)
+            if len(chunks) > 1:
+                analysis_text += f"\n[Processed in {len(chunks)} chunks due to sequence length]"
+
+        position_map, fix_count = validate_position_map(position_map, available_set, available)
+        position_map, rule_fix_count = _enforce_context_rules(
+            position_map,
+            raw_events,
+            shift,
+            available_set,
+            available,
+            meta,
+        )
+        if fix_count and analysis_text:
+            analysis_text += f"\n[Auto-corrected {fix_count} invalid replacement(s) to nearest available note]"
+        if rule_fix_count and analysis_text:
+            analysis_text += f"\n[Adjusted {rule_fix_count} context replacement(s) for melody direction / clash avoidance]"
         return AiArrangeResult(
             position_map=position_map,
             mode="context",
@@ -677,10 +1321,29 @@ def ai_arrange(
             total_notes=len(raw_events),
         )
 
-    prompt = build_remap_prompt(available, unmapped_unique, unmapped_counts, style=style, filename=midi_filename, meta=meta, optimal_hint=optimal_hint, simplify=simplify)
-    raw = call_openai(api_key, prompt, base_url=base_url, model=model, on_chunk=on_chunk)
-    analysis_text, json_text = parse_analysis_and_json(raw)
-    note_map = parse_remap_response(json_text) if json_text else {}
+    prompt = build_remap_prompt(
+        available,
+        unmapped_unique,
+        unmapped_counts,
+        style=style,
+        filename=midi_filename,
+        meta=meta,
+        key_analysis=key_analysis,
+        optimal_hint=optimal_hint,
+        simplify=simplify,
+    )
+    raw = call_openai(
+        api_key,
+        prompt,
+        base_url=base_url,
+        model=model,
+        on_chunk=on_chunk,
+        should_cancel=should_cancel,
+    )
+    analysis_text, note_map, _ = parse_ai_response(raw, "remap")
+    note_map, fix_count = validate_note_map(note_map, available_set, available)
+    if fix_count and analysis_text:
+        analysis_text += f"\n[Auto-corrected {fix_count} invalid replacement(s) to nearest available note]"
 
     return AiArrangeResult(
         note_map=note_map,

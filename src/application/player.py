@@ -25,6 +25,7 @@ class PlayOptions:
     tap_press_ms: int = DEFAULT_TAP_PRESS_MS
     dry_run: bool = False
     debug: bool = False
+    speed: float = 1.0
 
 
 def play_chart(
@@ -62,6 +63,8 @@ def play_chart(
             _log(f"[countdown] {remain}...")
             time.sleep(1)
 
+    speed = max(options.speed, 0.1)
+
     start = time.perf_counter()
     pressed_keys: set[str] = set()
 
@@ -72,8 +75,8 @@ def play_chart(
     for gi, (time_ms, events) in enumerate(grouped):
         if _stopped():
             break
-        target_ms = time_ms + options.latency_offset_ms
-        _wait_until(start, target_ms, stop_event)
+        target_real_ms = int(time_ms / speed) + options.latency_offset_ms
+        _wait_until(start, target_real_ms, stop_event)
         if _stopped():
             break
 
@@ -82,7 +85,7 @@ def play_chart(
             upcoming: list[tuple[int, str]] = []
             for fgi in range(gi + 1, len(grouped)):
                 ft, fevts = grouped[fgi]
-                offset = ft - time_ms
+                offset = int((ft - time_ms) / speed)
                 if offset > LOOKAHEAD_MS:
                     break
                 for fe in fevts:
@@ -105,7 +108,7 @@ def play_chart(
             )
 
         if progress:
-            elapsed = int((time.perf_counter() - start) * 1000)
+            elapsed = int((time.perf_counter() - start) * 1000 * speed)
             progress(gi + 1, total_groups, elapsed, total_ms)
 
     for key in list(pressed_keys):

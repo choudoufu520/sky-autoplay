@@ -38,7 +38,7 @@ skytool = "src.interfaces.cli.main:app"
 skygui = "src.interfaces.gui.app:main"
 
 [tool.setuptools]
-packages = ["src", "src.domain", "src.application", "src.infrastructure", "src.interfaces", "src.interfaces.cli", "src.interfaces.gui", "src.interfaces.gui.tabs", "src.interfaces.gui.workers"]
+packages = ["src", "src.domain", "src.application", "src.infrastructure", "src.interfaces", "src.interfaces.cli", "src.interfaces.gui", "src.interfaces.gui.tabs", "src.interfaces.gui.workers", "src.interfaces.gui.widgets"]
 
 [tool.ruff]
 line-length = 100

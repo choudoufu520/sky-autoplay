@@ -109,16 +109,23 @@ class PlayOverlay(QWidget):
         self._update_prefix_text()
 
         self._drag_pos = None
+        self._speed = 1.0
         self._move_to_default()
 
     # ── public API ──────────────────────────────────────────
+
+    def set_speed(self, speed: float) -> None:
+        self._speed = speed
 
     def update_progress(self, current: int, total: int, elapsed_ms: int, total_ms: int) -> None:
         if total > 0:
             self.progress_bar.setRange(0, total)
             self.progress_bar.setValue(current)
         self.time_label.setText(f"{_fmt_time(elapsed_ms)} / {_fmt_time(total_ms)}")
-        self.status_label.setText(f"♪ {tr('overlay.playing')}  {current}/{total}")
+        status = f"♪ {tr('overlay.playing')}  {current}/{total}"
+        if self._speed != 1.0:
+            status += f"  [{self._speed:.2g}x]"
+        self.status_label.setText(status)
 
     def set_countdown(self, seconds: int) -> None:
         self.status_label.setText(tr("overlay.countdown").format(sec=seconds))

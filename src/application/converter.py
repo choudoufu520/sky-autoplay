@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from bisect import bisect_left
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -39,6 +40,44 @@ def _resolve_profile_for_event(
 
 _MAX_SNAP_SEMITONES = 2
 
+_POSITION_TIME_TOLERANCE_MS = 30
+
+PositionIndex = dict[int, list[tuple[int, int]]]
+
+
+def build_position_index(pos_map: dict[tuple[int, int], int]) -> PositionIndex:
+    """Build a note-keyed index for fuzzy time lookup from position_map."""
+    idx: PositionIndex = {}
+    for (t, note), repl in pos_map.items():
+        idx.setdefault(note, []).append((t, repl))
+    for entries in idx.values():
+        entries.sort()
+    return idx
+
+
+def _fuzzy_position_lookup(
+    index: PositionIndex,
+    time_ms: int,
+    note: int,
+    tolerance: int = _POSITION_TIME_TOLERANCE_MS,
+) -> int | None:
+    """Find the replacement for *note* at the closest time within *tolerance*."""
+    entries = index.get(note)
+    if not entries:
+        return None
+    times = [e[0] for e in entries]
+    i = bisect_left(times, time_ms)
+    best_dist = tolerance + 1
+    best_repl: int | None = None
+    for candidate_idx in (i - 1, i):
+        if 0 <= candidate_idx < len(entries):
+            t, repl = entries[candidate_idx]
+            dist = abs(t - time_ms)
+            if dist < best_dist:
+                best_dist = dist
+                best_repl = repl
+    return best_repl
+
 
 def _lookup_key(
     mapping: MappingConfig,
@@ -49,12 +88,13 @@ def _lookup_key(
     snap: bool = False,
     ai_note_map: dict[int, int] | None = None,
     ai_position_map: dict[tuple[int, int], int] | None = None,
+    ai_position_index: PositionIndex | None = None,
     time_ms: int = 0,
 ) -> tuple[str | None, str | None]:
     """Return (mapped_key, snap_info). snap_info is None when exact match.
 
     Fallback order:
-      0a. AI position map — context-aware per-position replacement
+      0a. AI position map — context-aware per-position replacement (exact then fuzzy)
       0b. AI note map — global 1:1 replacement
       1. Snap within max distance (handles sharps/flats already in range)
       2. Octave fold → exact (handles out-of-range natural notes)
@@ -80,6 +120,15 @@ def _lookup_key(
             key = _exact_lookup(profile.note_to_key, replacement)
             if key is not None:
                 return key, f"ai-ctx: {final_note}->{replacement}"
+
+        if ai_position_index:
+            replacement = _fuzzy_position_lookup(ai_position_index, time_ms, final_note)
+            if replacement is not None:
+                if replacement == -1:
+                    return None, f"ai-drop: {final_note}"
+                key = _exact_lookup(profile.note_to_key, replacement)
+                if key is not None:
+                    return key, f"ai-ctx~: {final_note}->{replacement}"
 
     if ai_note_map and final_note in ai_note_map:
         replacement = ai_note_map[final_note]
@@ -215,12 +264,16 @@ def convert_midi_to_chart(
     warnings: list[str] = []
     chart_events: list[ChartEvent] = []
 
+    pos_map = options.ai_position_map or None
+    pos_index = build_position_index(pos_map) if pos_map else None
+
     for event in raw_events:
         profile_id = _resolve_profile_for_event(mapping, options.profile, event.program)
         mapped_key, snap_info = _lookup_key(
             mapping, profile_id, event.note, options.transpose, options.octave,
             snap=options.snap, ai_note_map=options.ai_note_map,
-            ai_position_map=options.ai_position_map or None,
+            ai_position_map=pos_map,
+            ai_position_index=pos_index,
             time_ms=event.time_ms,
         )
 

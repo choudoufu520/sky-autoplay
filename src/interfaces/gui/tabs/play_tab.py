@@ -5,6 +5,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFileDialog,
     QFormLayout,
     QHBoxLayout,
@@ -25,6 +26,16 @@ from src.interfaces.gui.play_overlay import PlayOverlay
 from src.interfaces.gui.workers.play_worker import PlayWorker
 
 _log = logging.getLogger(__name__)
+
+_SPEEDS: list[tuple[str, float]] = [
+    ("0.25x", 0.25),
+    ("0.5x", 0.5),
+    ("0.75x", 0.75),
+    ("1.0x", 1.0),
+    ("1.25x", 1.25),
+    ("1.5x", 1.5),
+    ("2.0x", 2.0),
+]
 
 
 class PlayTab(QWidget):
@@ -72,6 +83,13 @@ class PlayTab(QWidget):
         self.tap_press_spin.setSuffix(" ms")
         self.form.addRow(self.tap_press_label, self.tap_press_spin)
 
+        self.speed_label = QLabel()
+        self.speed_combo = QComboBox()
+        for label, _ in _SPEEDS:
+            self.speed_combo.addItem(label)
+        self.speed_combo.setCurrentIndex(3)  # 1.0x
+        self.form.addRow(self.speed_label, self.speed_combo)
+
         self.dry_run_check = QCheckBox()
         self.form.addRow(self.dry_run_check)
 
@@ -107,6 +125,7 @@ class PlayTab(QWidget):
         self.countdown_label.setText(tr("play.countdown"))
         self.stagger_label.setText(tr("play.stagger"))
         self.tap_press_label.setText(tr("play.tap_press"))
+        self.speed_label.setText(tr("play.speed"))
 
         self.dry_run_check.setText(tr("play.dry_run"))
         self.debug_check.setText(tr("play.debug"))
@@ -117,6 +136,7 @@ class PlayTab(QWidget):
         self.countdown_spin.setToolTip(tr("play.tip_countdown"))
         self.stagger_spin.setToolTip(tr("play.tip_stagger"))
         self.tap_press_spin.setToolTip(tr("play.tip_tap_press"))
+        self.speed_combo.setToolTip(tr("play.tip_speed"))
         self.dry_run_check.setToolTip(tr("play.tip_dry_run"))
 
     def set_chart_path(self, path: str) -> None:
@@ -139,6 +159,7 @@ class PlayTab(QWidget):
             self.log_text.appendPlainText(tr("play.err_load").format(err=exc))
             return
 
+        speed = _SPEEDS[self.speed_combo.currentIndex()][1]
         options = PlayOptions(
             latency_offset_ms=self.latency_spin.value(),
             countdown_sec=self.countdown_spin.value(),
@@ -146,6 +167,7 @@ class PlayTab(QWidget):
             tap_press_ms=self.tap_press_spin.value(),
             dry_run=self.dry_run_check.isChecked(),
             debug=self.debug_check.isChecked(),
+            speed=speed,
         )
 
         if options.dry_run:
@@ -162,7 +184,7 @@ class PlayTab(QWidget):
         self.play_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
-        self._show_overlay()
+        self._show_overlay(speed)
         self._start_hotkey_listener()
 
         self._worker = PlayWorker(chart, backend, options)
@@ -203,9 +225,10 @@ class PlayTab(QWidget):
 
     # ── overlay ─────────────────────────────────────────────
 
-    def _show_overlay(self) -> None:
+    def _show_overlay(self, speed: float = 1.0) -> None:
         if self._overlay is None:
             self._overlay = PlayOverlay()
+        self._overlay.set_speed(speed)
         self._overlay.set_countdown(0)
         self._overlay.show()
 

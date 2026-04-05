@@ -1,29 +1,32 @@
 # Sky Music Automation
 
-PC《Sky 光·遇》自动演奏工具 —— 导入 MIDI，自动弹奏。
+[中文文档](README_zh.md)
 
-## 功能一览
+Automated music playback tool for PC *Sky: Children of the Light* — import MIDI, play automatically.
 
-| 模块 | 说明 |
-|------|------|
-| **轨道分析** | 加载 MIDI 文件，查看轨道列表、音符分布、调性检测（自动推荐移调值） |
-| **谱面转换** | MIDI → 游戏谱面 JSON，支持移调、八度偏移、就近吸附 |
-| **AI 智能编曲** | 通过 OpenAI 兼容 API 将超出乐器音域的音符智能重映射；支持流式响应、三档风格（保守/平衡/自由）、两步审阅确认 |
-| **预览 MIDI** | 转换后生成预览 MIDI，用系统播放器试听转换效果 |
-| **轨道试听** | 导出指定轨道为独立 MIDI 并播放 |
-| **自动演奏** | 加载谱面后自动发送键盘输入，半透明浮窗实时显示进度和按键 |
-| **空跑调试** | 不发送按键，仅通过浮窗预览完整演奏流程 |
-| **按键映射** | GUI 可视化编辑音符 → 按键映射，支持多乐器配置 |
-| **自动更新** | 启动时自动检查 GitHub Release，一键下载更新 |
-| **双语 / 双主题** | 中文 / English，深色 / 浅色主题 |
+## Features
 
-## 快速开始
+| Module | Description |
+|--------|-------------|
+| **Track Analysis** | Load MIDI files, inspect tracks, note distribution, key detection (with auto-suggested transpose) |
+| **Chart Conversion** | MIDI → game chart JSON, with transpose, octave shift, and snap-to-nearest |
+| **AI Arrangement** | Remap out-of-range notes via OpenAI-compatible API; streaming, three styles (conservative / balanced / creative), two-step review |
+| **MIDI Preview** | Generate a preview MIDI after conversion to audition the result in your system player |
+| **Track Audition** | Export individual tracks as standalone MIDI and play them |
+| **Auto Play** | Load a chart and send keyboard input automatically; semi-transparent overlay shows real-time progress and keys |
+| **Simulated Play** | Visual 3×5 keyboard with audio feedback, adjustable speed and transpose |
+| **Dry Run** | Preview the entire playback via the overlay without sending actual key presses |
+| **Key Mapping** | GUI editor for note → key mappings, multi-instrument profiles |
+| **Auto Update** | Checks GitHub Releases on startup, one-click download |
+| **Bilingual / Dual Theme** | Chinese / English, dark / light theme |
 
-### 方式一：下载打包版（推荐）
+## Quick Start
 
-前往 [Releases](../../releases) 下载最新的 `SkyMusicAutomation-windows.zip`，解压后双击 `SkyMusicAutomation.exe` 即可运行。
+### Option 1: Download a pre-built release (recommended)
 
-### 方式二：从源码运行
+Go to [Releases](../../releases), download the latest `SkyMusicAutomation-windows.zip`, extract and run `SkyMusicAutomation.exe`.
+
+### Option 2: Run from source
 
 ```bash
 python -m venv .venv
@@ -32,57 +35,66 @@ pip install -e ".[input,gui,ai]"
 python -m src.interfaces.gui.app
 ```
 
-需要 Python ≥ 3.11。
+Requires Python >= 3.11.
 
-## 使用流程
+## Workflow
 
 ```
-① 轨道  →  ② 转换  →  ③ AI 编曲（可选）  →  ④ 预览  →  ⑤ 演奏
+① Tracks  →  ② Convert  →  ③ AI Arrange (optional)  →  ④ Preview  →  ⑤ Play
 ```
 
-1. **轨道** — 选择 MIDI 文件，查看各轨道信息和调性分析
-2. **转换** — 选择轨道和映射配置，设置移调 / 八度参数，转换为谱面 JSON；可勾选「生成预览 MIDI」试听效果
-3. **AI 编曲**（可选）— 填入 API Key，选择模式和风格，点击「AI 编曲」：
-   - AI 返回分析方案和映射建议，用户可逐条审核修改
-   - 满意后点击「应用映射」，或输入补充指令点击「带反馈重试」
-4. **预览** — 试听指定轨道确认效果
-5. **演奏** — 加载谱面，点击「开始演奏」，在倒计时内切换到游戏窗口
+1. **Tracks** — Select a MIDI file, inspect track info and key analysis
+2. **Convert** — Choose track and mapping profile, set transpose / octave, convert to chart JSON; optionally generate a preview MIDI
+3. **AI Arrange** (optional) — Enter your API key, pick mode and style, click "AI Arrange":
+   - AI returns analysis and mapping suggestions for review
+   - Accept, edit, or retry with feedback
+4. **Preview** — Audition the selected track to confirm the result
+5. **Play** — Load the chart, click "Start Play", switch to the game during countdown
 
-> 建议先用「空跑模式」测试，确认节奏和按键正常后再实际演奏。
+> Tip: use **Dry Run** mode first to verify timing and keys before actual playback.
 
-## AI 编曲
+## AI Arrangement
 
-支持两种模式：
+Two modes:
 
-- **音符重映射**（快速）— 同一音符始终映射到相同替代音
-- **上下文编曲**（智能）— 分析旋律上下文，同一音符在不同位置可映射到不同替代音
+- **Note Remap** (fast) — Each note always maps to the same substitute
+- **Context Arrange** (smart) — Analyzes melodic context; the same note may map differently at different positions
 
-三档风格：
+Three styles:
 
-| 风格 | 行为 |
-|------|------|
-| 严格替换 | 每个未映射音都必须替换，忠于原曲 |
-| 智能改编 | 允许丢弃装饰音 / 经过音，简化和弦 |
-| 自由改编 | 完全自由创作，优先保证音乐性 |
+| Style | Behavior |
+|-------|----------|
+| Conservative | Every unmapped note must be substituted, faithful to the original |
+| Balanced | May drop ornamental / passing tones, simplify chords |
+| Creative | Free rewriting, prioritizes musicality |
 
-AI 编曲采用两步确认流程：AI 先输出分析方案和映射建议 → 用户审阅修改 → 确认应用或带反馈重试。
+Two-step review: AI outputs analysis + suggestions → user reviews → apply or retry with feedback.
 
-兼容任何 OpenAI 格式的 API 端点（OpenAI / DeepSeek / 本地模型等）。
+Compatible with any OpenAI-format API endpoint (OpenAI / DeepSeek / local models, etc.).
 
-## 演奏浮窗
+## Play Overlay
 
-演奏时屏幕右上角会出现半透明浮窗（可拖拽）：
+A semi-transparent overlay appears at the top-right corner during playback (draggable):
 
-- 进度条与已用 / 总时间
-- 当前正在按的键（高亮）
-- 即将按的键（未来 3 秒预览）
-- **F9** 全局热键随时停止
+- Progress bar with elapsed / total time
+- Currently pressed keys (highlighted)
+- Upcoming keys (3-second look-ahead)
+- **F9** global hotkey to stop anytime
 
-浮窗不会抢占游戏焦点，空跑和实际演奏均会显示。
+The overlay does not steal game focus and is shown in both dry-run and actual playback.
 
-## 按键映射
+## Simulated Play
 
-编辑 `configs/mapping.example.yaml` 或在 GUI「按键映射」标签页中修改：
+The Simulate tab provides a visual 3×5 Sky keyboard with audio feedback:
+
+- **Auto / Manual mode** — auto-play a chart or free-play with your keyboard
+- **Speed control** — 0.25x to 2.0x playback speed
+- **Transpose** — shift all notes ±12 semitones
+- **Custom samples** — place WAV files in `assets/instruments/piano/` to replace the built-in piano synthesis (see [sample README](assets/instruments/piano/README.md))
+
+## Key Mapping
+
+Edit `configs/mapping.example.yaml` or use the GUI "Key Mapping" tab:
 
 ```yaml
 default_profile: default
@@ -97,13 +109,13 @@ profiles:
     octave_shift: 0
 ```
 
-- 每个 profile 对应一种乐器的音符 → 按键映射
-- 支持移调（`transpose_semitones`）和八度偏移（`octave_shift`）
-- 未映射的音符可通过「就近吸附」自动匹配最近的可用音
+- Each profile maps notes to keyboard keys for a specific instrument
+- Supports transpose (`transpose_semitones`) and octave shift (`octave_shift`)
+- Unmapped notes can be auto-matched to the nearest available key via snap-to-nearest
 
 ## CLI
 
-安装后可用 `skytool` 命令行工具：
+After installation, use the `skytool` command-line tool:
 
 ```bash
 skytool tracks midis/song.mid
@@ -111,31 +123,31 @@ skytool convert midis/song.mid -m configs/mapping.example.yaml -o output/chart.j
 skytool play output/chart.json --dry-run
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 src/
-├── domain/          # 领域模型（ChartDocument, MappingConfig 等）
-├── application/     # 业务逻辑（converter, player, ai_arranger, updater）
-├── infrastructure/  # 基础设施（MIDI 读取, 文件存储）
+├── domain/          # Domain models (ChartDocument, MappingConfig, etc.)
+├── application/     # Business logic (converter, player, ai_arranger, updater)
+├── infrastructure/  # Infrastructure (MIDI reader, file storage)
 └── interfaces/
-    ├── cli/         # 命令行界面（Typer）
-    └── gui/         # 图形界面（PySide6）
-        ├── tabs/    # 各功能标签页
-        └── workers/ # 后台线程 Worker
+    ├── cli/         # CLI (Typer)
+    └── gui/         # GUI (PySide6)
+        ├── tabs/    # Feature tabs
+        └── workers/ # Background thread workers
 ```
 
-## 构建发布
+## Build & Release
 
-推送 tag 即自动构建并发布到 GitHub Releases：
+Push a tag to automatically build and publish to GitHub Releases:
 
 ```bash
 git tag v0.2.0
 git push --tags
 ```
 
-GitHub Actions 会自动从 tag 提取版本号、打包 PyInstaller 产物并创建 Release。
+GitHub Actions extracts the version from the tag, packages with PyInstaller, and creates a Release.
 
-## 风险提示
+## Disclaimer
 
-《Sky 光·遇》为在线游戏，自动化输入可能违反服务条款并带来账号风险。请自行判断，谨慎使用。
+*Sky: Children of the Light* is an online game. Automated input may violate its Terms of Service and risk your account. Use at your own discretion.

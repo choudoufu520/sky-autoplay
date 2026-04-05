@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import Counter
+import logging
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QThread, QTimer, Signal
@@ -34,6 +36,8 @@ from src.infrastructure.midi_reader import MidiKeyAnalysis, analyze_midi_key, li
 from src.infrastructure.repository import load_mapping, save_chart
 from src.interfaces.gui.paths import default_mapping_path
 from src.interfaces.gui.i18n import on_language_changed, tr
+
+logger = logging.getLogger(__name__)
 
 
 class _OptimalWorker(QThread):
@@ -303,7 +307,7 @@ class ConvertTab(QWidget):
         ai_action_row.addWidget(self.ai_retry_btn)
         self.ai_cancel_btn = QPushButton()
         self.ai_cancel_btn.setVisible(False)
-        self.ai_cancel_btn.clicked.connect(self._exit_review_mode)
+        self.ai_cancel_btn.clicked.connect(self._handle_ai_cancel)
         ai_action_row.addWidget(self.ai_cancel_btn)
         ai_layout.addLayout(ai_action_row)
 
@@ -645,7 +649,9 @@ class ConvertTab(QWidget):
             pass
 
     def _ai_arrange(self) -> None:
-        from src.application.ai_arranger import _get_available_notes
+        from src.application.ai_arranger import (
+            get_arrange_precheck,
+        )
         from src.interfaces.gui.workers.ai_worker import AiArrangeWorker
 
         midi_path = self._midi_path or self.midi_edit.text().strip()
@@ -666,7 +672,6 @@ class ConvertTab(QWidget):
             return
 
         profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
-        self._ai_available_notes = _get_available_notes(mapping_config, profile)
         single_track_val = self.single_track_combo.currentData()
         base_url = self.ai_url_edit.text().strip() or None
         model = self.ai_model_edit.text().strip() or "gpt-4o-mini"
@@ -675,7 +680,41 @@ class ConvertTab(QWidget):
         style = self.ai_style_combo.currentData() or "conservative"
         simplify = self.ai_simplify_check.isChecked()
 
+        try:
+            precheck = get_arrange_precheck(
+                Path(midi_path),
+                mapping_config,
+                profile,
+                transpose=self.transpose_spin.value(),
+                octave=self.octave_spin.value(),
+                single_track=single_track_val,
+                mode=mode,
+                style=style,
+                simplify=simplify,
+            )
+        except Exception as exc:
+            self.ai_status_label.setText(tr("convert.ai_err").format(err=exc))
+            return
+
+        self._ai_available_notes = precheck.available_notes
+
+        if mode == "context" and precheck.requires_chunking:
+            try:
+                from PySide6.QtWidgets import QMessageBox
+                reply = QMessageBox.question(
+                    self,
+                    tr("convert.ai_token_warn_title"),
+                    tr("convert.ai_token_warn").format(tokens=precheck.estimated_tokens),
+                )
+                if reply != QMessageBox.StandardButton.Yes:
+                    return
+            except Exception:
+                pass
+
         self.ai_arrange_btn.setEnabled(False)
+        self.ai_arrange_btn.setVisible(False)
+        self.ai_cancel_btn.setVisible(True)
+        self.ai_cancel_btn.setEnabled(True)
         self._ai_elapsed = 0
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
         self._ai_timer.start()
@@ -711,8 +750,12 @@ class ConvertTab(QWidget):
         self._ai_chunk_timer.stop()
         self._flush_chunk_buffer()
         self.ai_copy_btn.setVisible(False)
+        self.ai_cancel_btn.setText(tr("convert.ai_cancel"))
+        self._ai_worker = None
         if not isinstance(result, AiArrangeResult):
             self.ai_arrange_btn.setEnabled(True)
+            self.ai_arrange_btn.setVisible(True)
+            self.ai_cancel_btn.setVisible(False)
             return
 
         self._ai_last_result = result
@@ -727,6 +770,8 @@ class ConvertTab(QWidget):
 
         if result.mode == "remap" and result.note_map:
             self._populate_review_table(result.note_map)
+        elif result.mode == "context" and result.position_map:
+            self._populate_context_review_table(result.position_map)
         self._enter_review_mode()
 
     def _on_ai_chunk(self, accumulated: str) -> None:
@@ -747,14 +792,27 @@ class ConvertTab(QWidget):
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=self._ai_elapsed))
 
     def _on_ai_error(self, msg: str) -> None:
+        from src.application.ai_arranger import AiArrangeCancelled, AiArrangeError
+
         self._ai_timer.stop()
         self._ai_chunk_timer.stop()
         elapsed = self._ai_elapsed
         self.ai_arrange_btn.setVisible(True)
         self.ai_arrange_btn.setEnabled(True)
+        self.ai_cancel_btn.setVisible(False)
+        self.ai_cancel_btn.setText(tr("convert.ai_cancel"))
         self._ai_note_map = None
         self._ai_position_map = None
-        self.ai_status_label.setText(tr("convert.ai_err").format(err=msg) + f"  ({elapsed}s)")
+        self._ai_worker = None
+        if isinstance(msg, AiArrangeCancelled):
+            self.ai_status_label.setText(tr("convert.ai_cancelled").format(sec=elapsed))
+            self.ai_copy_btn.setVisible(False)
+            return
+        if isinstance(msg, AiArrangeError):
+            detail = f" ({msg.detail})" if msg.detail else ""
+            self.ai_status_label.setText(tr("convert.ai_err").format(err=f"{msg.user_message}{detail}") + f"  ({elapsed}s)")
+        else:
+            self.ai_status_label.setText(tr("convert.ai_err").format(err=msg) + f"  ({elapsed}s)")
         self.ai_copy_btn.setVisible(True)
 
     def _copy_ai_status(self) -> None:
@@ -769,11 +827,8 @@ class ConvertTab(QWidget):
     def _enter_review_mode(self) -> None:
         self.ai_arrange_btn.setVisible(False)
         self.convert_btn.setVisible(False)
-        is_remap = (
-            self._ai_last_result is not None
-            and getattr(self._ai_last_result, "mode", "") == "remap"
-        )
-        self.ai_review_table.setVisible(is_remap)
+        has_table = self.ai_review_table.rowCount() > 0
+        self.ai_review_table.setVisible(has_table)
         self.ai_feedback_edit.setVisible(True)
         self.ai_feedback_edit.clear()
         self.ai_preview_btn.setVisible(True)
@@ -797,8 +852,24 @@ class ConvertTab(QWidget):
         self.ai_status_label.clear()
         self.convert_btn.setVisible(not self.ai_group.isChecked())
 
+    def _handle_ai_cancel(self) -> None:
+        worker = self._ai_worker
+        if worker is not None and worker.isRunning():
+            self.ai_cancel_btn.setEnabled(False)
+            self.ai_status_label.setText(tr("convert.ai_cancelling"))
+            try:
+                cancel = getattr(worker, "cancel", None)
+                if callable(cancel):
+                    cancel()
+                else:
+                    worker.requestInterruption()
+            except Exception as exc:
+                logger.warning("Failed to request AI cancellation: %s", exc)
+            return
+        self._exit_review_mode()
+
     def _populate_review_table(self, note_map: dict[int, int]) -> None:
-        from src.application.ai_arranger import _midi_to_name
+        from src.application.ai_arranger import midi_to_name
 
         table = self.ai_review_table
         table.setRowCount(len(note_map))
@@ -809,7 +880,7 @@ class ConvertTab(QWidget):
             orig_item.setFlags(orig_item.flags() & ~orig_item.flags().ItemIsEditable)
             table.setItem(row, 0, orig_item)
 
-            name_item = QTableWidgetItem(_midi_to_name(orig))
+            name_item = QTableWidgetItem(midi_to_name(orig))
             name_item.setFlags(name_item.flags() & ~name_item.flags().ItemIsEditable)
             table.setItem(row, 1, name_item)
 
@@ -818,7 +889,7 @@ class ConvertTab(QWidget):
             table.setItem(row, 2, sugg_item)
 
             sugg_name_item = QTableWidgetItem(
-                drop_label if repl == -1 else _midi_to_name(repl)
+                drop_label if repl == -1 else midi_to_name(repl)
             )
             sugg_name_item.setFlags(sugg_name_item.flags() & ~sugg_name_item.flags().ItemIsEditable)
             table.setItem(row, 3, sugg_name_item)
@@ -826,7 +897,7 @@ class ConvertTab(QWidget):
             combo = QComboBox()
             combo.addItem(drop_label, userData=-1)
             for n in self._ai_available_notes:
-                combo.addItem(f"{n} ({_midi_to_name(n)})", userData=n)
+                combo.addItem(f"{n} ({midi_to_name(n)})", userData=n)
             if repl == -1:
                 combo.setCurrentIndex(0)
             else:
@@ -834,6 +905,58 @@ class ConvertTab(QWidget):
                     if combo.itemData(i) == repl:
                         combo.setCurrentIndex(i)
                         break
+            table.setCellWidget(row, 4, combo)
+
+    def _populate_context_review_table(self, position_map: list) -> None:
+        """Build a per-note summary table for context mode results."""
+        from src.application.ai_arranger import midi_to_name
+
+        note_votes: dict[int, Counter[int]] = {}
+        for pr in position_map:
+            note_votes.setdefault(pr.original, Counter())[pr.replacement] += 1
+
+        if not note_votes:
+            return
+
+        table = self.ai_review_table
+        table.setRowCount(len(note_votes))
+        drop_label = tr("convert.ai_review_drop")
+
+        for row, (orig, counts) in enumerate(sorted(note_votes.items())):
+            most_common_repl = counts.most_common(1)[0][0]
+            total = sum(counts.values())
+            dist_parts: list[str] = []
+            for repl, cnt in counts.most_common(3):
+                label = drop_label if repl == -1 else f"{repl}({midi_to_name(repl)})"
+                dist_parts.append(f"{label} x{cnt}")
+            dist_str = ", ".join(dist_parts)
+            if len(counts) > 3:
+                dist_str += ", ..."
+
+            orig_item = QTableWidgetItem(str(orig))
+            orig_item.setFlags(orig_item.flags() & ~orig_item.flags().ItemIsEditable)
+            table.setItem(row, 0, orig_item)
+
+            name_item = QTableWidgetItem(midi_to_name(orig))
+            name_item.setFlags(name_item.flags() & ~name_item.flags().ItemIsEditable)
+            table.setItem(row, 1, name_item)
+
+            sugg_item = QTableWidgetItem(
+                drop_label if most_common_repl == -1 else str(most_common_repl)
+            )
+            sugg_item.setFlags(sugg_item.flags() & ~sugg_item.flags().ItemIsEditable)
+            table.setItem(row, 2, sugg_item)
+
+            dist_item = QTableWidgetItem(f"({total}) {dist_str}")
+            dist_item.setFlags(dist_item.flags() & ~dist_item.flags().ItemIsEditable)
+            table.setItem(row, 3, dist_item)
+
+            combo = QComboBox()
+            combo.addItem(tr("convert.ai_review_keep_ctx"), userData=None)
+            combo.addItem(drop_label, userData=-1)
+            for n in self._ai_available_notes:
+                combo.addItem(f"{n} ({midi_to_name(n)})", userData=n)
+            combo.setCurrentIndex(0)
             table.setCellWidget(row, 4, combo)
 
     def _apply_review_table(self) -> None:
@@ -860,10 +983,34 @@ class ConvertTab(QWidget):
             status_msg = tr("convert.ai_applied_direct").format(count=len(note_map))
         elif result.mode == "context" and result.position_map:
             pos_dict: dict[tuple[int, int], int] = {}
+            note_votes: dict[int, Counter[int]] = {}
             for pr in result.position_map:
                 pos_dict[(pr.time_ms, pr.original)] = pr.replacement
+                if pr.replacement != -1:
+                    note_votes.setdefault(pr.original, Counter())[pr.replacement] += 1
             self._ai_position_map = pos_dict
-            self._ai_note_map = None
+            fallback: dict[int, int] = {}
+            for orig, counts in note_votes.items():
+                fallback[orig] = counts.most_common(1)[0][0]
+
+            overrides: dict[int, int] = {}
+            for row in range(self.ai_review_table.rowCount()):
+                orig_item = self.ai_review_table.item(row, 0)
+                combo = self.ai_review_table.cellWidget(row, 4)
+                if orig_item and isinstance(combo, QComboBox):
+                    repl = combo.currentData()
+                    if repl is not None:
+                        orig = int(orig_item.text())
+                        overrides[orig] = repl
+
+            if overrides:
+                for orig, forced_repl in overrides.items():
+                    fallback[orig] = forced_repl
+                    for key in list(pos_dict):
+                        if key[1] == orig:
+                            pos_dict[key] = forced_repl
+
+            self._ai_note_map = fallback if fallback else None
             status_msg = tr("convert.ai_done_context").format(
                 mapped=len(result.position_map), unmapped=result.unmapped_count,
             )
@@ -907,9 +1054,16 @@ class ConvertTab(QWidget):
             ai_note_map = note_map if note_map else None
         elif result.mode == "context" and result.position_map:
             pos_dict: dict[tuple[int, int], int] = {}
+            note_votes: dict[int, Counter[int]] = {}
             for pr in result.position_map:
                 pos_dict[(pr.time_ms, pr.original)] = pr.replacement
+                if pr.replacement != -1:
+                    note_votes.setdefault(pr.original, Counter())[pr.replacement] += 1
             ai_position_map = pos_dict
+            fallback_preview: dict[int, int] = {}
+            for orig, counts in note_votes.items():
+                fallback_preview[orig] = counts.most_common(1)[0][0]
+            ai_note_map = fallback_preview if fallback_preview else None
 
         profile = self.profile_combo.currentText().strip() or None
         single_track_val = self.single_track_combo.currentData()
@@ -956,6 +1110,8 @@ class ConvertTab(QWidget):
 
         self._exit_review_mode()
         self.ai_arrange_btn.setVisible(False)
+        self.ai_cancel_btn.setVisible(True)
+        self.ai_cancel_btn.setEnabled(True)
         self._ai_elapsed = 0
         self.ai_status_label.setText(tr("convert.ai_working_time").format(sec=0))
         self._ai_timer.start()

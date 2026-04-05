@@ -146,10 +146,11 @@ def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKe
             break
 
     pitch_counts: Counter[int] = Counter()
-    note_stream = scan_tracks[0] if len(scan_tracks) == 1 else merge_tracks(scan_tracks)
-    for msg in note_stream:
-        if msg.type == "note_on" and msg.velocity > 0:
-            pitch_counts[msg.note % 12] += 1
+    weighted_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    for ev in weighted_events:
+        duration_weight = max(int(round(ev.duration_ms / 40)), 1)
+        velocity_weight = max(ev.velocity // 24, 1)
+        pitch_counts[ev.note % 12] += duration_weight + velocity_weight
 
     if not pitch_counts:
         return result

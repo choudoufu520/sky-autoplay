@@ -11,7 +11,7 @@ You are a professional music arranger.
 An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min_desc} ~ {avail_max_desc}
-These notes form a {scale_key} scale spanning 2 octaves.
+Likely tonal center to preserve: {scale_key}.
 Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
 {optimal_hint}
 The following MIDI notes from the original piece cannot be played on this instrument:
@@ -54,12 +54,13 @@ You are a professional music arranger.
 An instrument only has these notes available:
 [{avail_desc}]
 Instrument range: {avail_min_desc} ~ {avail_max_desc}
-These notes form a {scale_key} scale spanning 2 octaves.
+Likely tonal center to preserve: {scale_key}.
 Replacements should respect scale-degree function: the 3rd of a chord is harmonically more critical than the 5th; a leading tone (7th degree) resolving to tonic should be preserved.
 {optimal_hint}
 Below is the note sequence from a MIDI track, grouped by simultaneous notes and organized by bar.
 - Notes marked [UNMAPPED] cannot be played on this instrument and need replacements.
-- Notes marked [MELODY] are the highest note in each group (typically the melody voice).
+- Notes marked [MELODY] are the most likely foreground note in each group based on pitch, duration, velocity, and continuity.
+- Notes marked [ACCENT] are louder notes and may deserve foreground priority.
 - Notes without [MELODY] are accompaniment/chord tones.
 
 For each [UNMAPPED] note, suggest the best available replacement. The same original note at different positions MAY map to different replacements based on context.
