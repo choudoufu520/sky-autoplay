@@ -1226,8 +1226,22 @@ class ConvertTab(QWidget):
             combo.addItem(drop_label, userData=-1)
             for n in self._ai_available_notes:
                 combo.addItem(f"{n} ({midi_to_name(n)})", userData=n)
-            combo.setCurrentIndex(0)
+            for i in range(combo.count()):
+                if combo.itemData(i) == most_common_repl:
+                    combo.setCurrentIndex(i)
+                    break
             table.setCellWidget(row, 4, combo)
+
+    def _collect_context_review_overrides(self) -> dict[int, int]:
+        overrides: dict[int, int] = {}
+        for row in range(self.ai_review_table.rowCount()):
+            orig_item = self.ai_review_table.item(row, 0)
+            combo = self.ai_review_table.cellWidget(row, 4)
+            if orig_item and isinstance(combo, QComboBox):
+                repl = combo.currentData()
+                if repl is not None:
+                    overrides[int(orig_item.text())] = repl
+        return overrides
 
     def _apply_review_table(self) -> None:
         from src.application.ai_arranger import AiArrangeResult
@@ -1263,15 +1277,7 @@ class ConvertTab(QWidget):
             for orig, counts in note_votes.items():
                 fallback[orig] = counts.most_common(1)[0][0]
 
-            overrides: dict[int, int] = {}
-            for row in range(self.ai_review_table.rowCount()):
-                orig_item = self.ai_review_table.item(row, 0)
-                combo = self.ai_review_table.cellWidget(row, 4)
-                if orig_item and isinstance(combo, QComboBox):
-                    repl = combo.currentData()
-                    if repl is not None:
-                        orig = int(orig_item.text())
-                        overrides[orig] = repl
+            overrides = self._collect_context_review_overrides()
 
             if overrides:
                 for orig, forced_repl in overrides.items():
@@ -1333,6 +1339,13 @@ class ConvertTab(QWidget):
             fallback_preview: dict[int, int] = {}
             for orig, counts in note_votes.items():
                 fallback_preview[orig] = counts.most_common(1)[0][0]
+            overrides = self._collect_context_review_overrides()
+            if overrides:
+                for orig, forced_repl in overrides.items():
+                    fallback_preview[orig] = forced_repl
+                    for key in list(pos_dict):
+                        if key[1] == orig:
+                            pos_dict[key] = forced_repl
             ai_note_map = fallback_preview if fallback_preview else None
 
         profile = self.profile_combo.currentText().strip() or None

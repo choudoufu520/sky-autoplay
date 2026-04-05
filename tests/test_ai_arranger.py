@@ -1,4 +1,6 @@
 import json
+import sys
+import types
 
 import pytest
 
@@ -343,6 +345,116 @@ class TestArrangePrecheck:
         assert precheck.requires_chunking is True
         assert seen_lengths
         assert max(seen_lengths) < len(events)
+
+    def test_context_precheck_sums_each_chunk_token_estimate(self, monkeypatch, tmp_path):
+        mapping = MappingConfig(
+            default_profile="default",
+            profiles={"default": MappingProfile(note_to_key={"60": "a", "62": "b", "64": "c"})},
+        )
+        midi_path = tmp_path / "chunked.mid"
+        midi_path.write_bytes(b"")
+        events = [
+            RawMidiEvent(time_ms=i * 1000, note=60 + (i % 3), duration_ms=300, velocity=80, program=None)
+            for i in range(8)
+        ]
+        chunks = [events[:2], events[:5], events[:3]]
+        seen_lengths: list[int] = []
+
+        monkeypatch.setattr(ai_arranger, "read_midi_events", lambda *args, **kwargs: (events, 480, 1))
+        monkeypatch.setattr(
+            ai_arranger,
+            "read_midi_meta",
+            lambda *args, **kwargs: MidiMeta(bpm=120.0, time_signature="4/4", total_notes=len(events), duration_sec=8.0),
+        )
+        monkeypatch.setattr(ai_arranger, "analyze_midi_key", lambda *args, **kwargs: MidiKeyAnalysis())
+        monkeypatch.setattr(ai_arranger, "_requires_context_chunking_by_bars", lambda *args, **kwargs: True)
+        monkeypatch.setattr(ai_arranger, "_split_events_into_chunks", lambda *args, **kwargs: chunks)
+
+        def _fake_build_context_prompt(available, prompt_events, *args, **kwargs):
+            seen_lengths.append(len(prompt_events))
+            return "x" * len(prompt_events)
+
+        monkeypatch.setattr(ai_arranger, "build_context_prompt", _fake_build_context_prompt)
+        monkeypatch.setattr(ai_arranger, "_estimate_tokens", lambda prompt: len(prompt))
+
+        precheck = get_arrange_precheck(midi_path, mapping, "default", mode="context")
+
+        assert seen_lengths == [2, 5, 3]
+        assert precheck.estimated_tokens == 10
+
+    def test_call_openai_closes_attempt_resources_between_retries(self, monkeypatch):
+        created_clients = []
+        created_streams = []
+
+        class FakeHttpClient:
+            def __init__(self, timeout):
+                self.timeout = timeout
+                self.closed = 0
+                created_clients.append(self)
+
+            def close(self):
+                self.closed += 1
+
+        class FakeStream:
+            def __init__(self, text):
+                self.text = text
+                self.closed = 0
+                created_streams.append(self)
+
+            def __iter__(self):
+                yield types.SimpleNamespace(
+                    choices=[types.SimpleNamespace(delta=types.SimpleNamespace(content=self.text))]
+                )
+
+            def close(self):
+                self.closed += 1
+
+        class APITimeoutError(Exception):
+            pass
+
+        class FakeOpenAI:
+            create_calls = 0
+
+            def __init__(self, **kwargs):
+                self.chat = types.SimpleNamespace(
+                    completions=types.SimpleNamespace(create=self._create)
+                )
+
+            def _create(self, **kwargs):
+                call_index = FakeOpenAI.create_calls
+                FakeOpenAI.create_calls += 1
+                if call_index < 2:
+                    raise APITimeoutError("timed out")
+                return FakeStream("ok")
+
+        fake_httpx = types.ModuleType("httpx")
+        fake_httpx.Client = FakeHttpClient
+        fake_httpx.Timeout = lambda *args, **kwargs: object()
+        fake_httpx.TimeoutException = type("TimeoutException", (Exception,), {})
+        fake_httpx.NetworkError = type("NetworkError", (Exception,), {})
+        fake_httpx.RemoteProtocolError = type("RemoteProtocolError", (Exception,), {})
+        fake_httpx.ReadError = type("ReadError", (Exception,), {})
+        fake_httpx.WriteError = type("WriteError", (Exception,), {})
+
+        fake_openai = types.ModuleType("openai")
+        fake_openai.OpenAI = FakeOpenAI
+        fake_openai.BadRequestError = type("BadRequestError", (Exception,), {})
+
+        monkeypatch.setitem(sys.modules, "httpx", fake_httpx)
+        monkeypatch.setitem(sys.modules, "openai", fake_openai)
+        monkeypatch.setattr(ai_arranger, "_sleep_with_cancel", lambda *args, **kwargs: None)
+
+        result = ai_arranger.call_openai(
+            api_key="test-key",
+            prompt="hello",
+            cancel_state=ai_arranger.CancellableState(),
+        )
+
+        assert result == "ok"
+        assert len(created_clients) == 3
+        assert [client.closed for client in created_clients] == [1, 1, 1]
+        assert len(created_streams) == 1
+        assert created_streams[0].closed == 1
 
     def test_find_optimal_settings_respects_cancel(self, monkeypatch, tmp_path):
         mapping = MappingConfig(

@@ -919,19 +919,16 @@ def get_arrange_precheck(
     key_analysis = analyze_midi_key(midi_path, tracks=tracks)
     if _requires_context_chunking_by_bars(events, meta):
         chunks = _split_events_into_chunks(events, meta)
-        sample_events = max(chunks, key=len) if chunks else events
-        prompt = build_context_prompt(
+        estimated = _estimate_chunked_context_tokens(
+            chunks or [events],
             available,
-            sample_events,
             shift,
-            set(available),
+            midi_path.stem,
+            meta,
+            key_analysis,
             style=style,
-            filename=midi_path.stem,
-            meta=meta,
-            key_analysis=key_analysis,
             simplify=simplify,
         )
-        estimated = _estimate_tokens(prompt) * max(len(chunks), 1)
         return ArrangePrecheck(
             available_notes=available,
             shift=shift,
@@ -993,6 +990,35 @@ def _requires_context_chunking_by_bars(
     meta: MidiMeta | None,
 ) -> bool:
     return _count_total_bars(events, meta) > _BARS_PER_CHUNK
+
+
+def _estimate_chunked_context_tokens(
+    chunks: list[list[RawMidiEvent]],
+    available: list[int],
+    shift: int,
+    filename: str,
+    meta: MidiMeta | None,
+    key_analysis: MidiKeyAnalysis | None,
+    *,
+    style: str,
+    simplify: bool,
+) -> int:
+    available_set = set(available)
+    total = 0
+    for chunk in chunks:
+        prompt = build_context_prompt(
+            available,
+            chunk,
+            shift,
+            available_set,
+            style=style,
+            filename=filename,
+            meta=meta,
+            key_analysis=key_analysis,
+            simplify=simplify,
+        )
+        total += _estimate_tokens(prompt)
+    return total
 
 
 def _find_phrase_boundary(events: list[RawMidiEvent], target_ms: float, bar_ms: float) -> float:
@@ -1071,11 +1097,12 @@ class CancellableState:
 
     def __init__(self) -> None:
         self._lock = threading.Lock()
+        self._attempt_token: object | None = None
         self._http_client: object | None = None
         self._stream: object | None = None
         self._closed = False
 
-    def set_http_client(self, http_client: object) -> None:
+    def set_http_client(self, http_client: object, attempt_token: object | None = None) -> None:
         with self._lock:
             if self._closed:
                 try:
@@ -1083,10 +1110,11 @@ class CancellableState:
                 except Exception:
                     pass
                 return
+            self._attempt_token = attempt_token
             self._http_client = http_client
             self._stream = None
 
-    def set_stream(self, stream: object) -> None:
+    def set_stream(self, stream: object, attempt_token: object | None = None) -> None:
         with self._lock:
             if self._closed:
                 try:
@@ -1094,7 +1122,21 @@ class CancellableState:
                 except Exception:
                     pass
                 return
+            if attempt_token is not None and self._attempt_token is not attempt_token:
+                try:
+                    stream.close()  # type: ignore[union-attr]
+                except Exception:
+                    pass
+                return
             self._stream = stream
+
+    def clear_attempt(self, attempt_token: object | None = None) -> None:
+        with self._lock:
+            if attempt_token is not None and self._attempt_token is not attempt_token:
+                return
+            self._attempt_token = None
+            self._stream = None
+            self._http_client = None
 
     def force_close(self) -> None:
         with self._lock:
@@ -1118,6 +1160,15 @@ class CancellableState:
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 2.0
 _STREAM_PROGRESS_INTERVAL = 5.0
+
+
+def _close_resource_quietly(resource: object | None) -> None:
+    if resource is None:
+        return
+    try:
+        resource.close()  # type: ignore[union-attr]
+    except Exception:
+        pass
 
 
 def _is_retryable(exc: Exception) -> bool:
@@ -1208,9 +1259,10 @@ def call_openai(
     for attempt in range(_MAX_RETRIES):
         _raise_if_cancelled(should_cancel)
 
+        attempt_token = object()
         http_client = httpx.Client(timeout=httpx.Timeout(3000, connect=30))
         if cancel_state:
-            cancel_state.set_http_client(http_client)
+            cancel_state.set_http_client(http_client, attempt_token)
         client = OpenAI(
             api_key=api_key,
             base_url=normalized_url,
@@ -1218,12 +1270,24 @@ def call_openai(
         )
 
         q: _queue.Queue[tuple[str, object]] = _queue.Queue()
+        stream_holder: dict[str, object | None] = {"stream": None}
+
+        def _cleanup_attempt() -> None:
+            if cancel_state:
+                cancel_state.clear_attempt(attempt_token)
+            stream = stream_holder["stream"]
+            stream_holder["stream"] = None
+            _close_resource_quietly(stream)
+            _close_resource_quietly(http_client)
+            api_thread.join(timeout=1.0)
 
         def _api_call(
             _client: object = client,
             _kw: dict = create_kwargs,
             _q: _queue.Queue = q,
             _cs: CancellableState | None = cancel_state,
+            _attempt_token: object = attempt_token,
+            _stream_holder: dict[str, object | None] = stream_holder,
         ) -> None:
             try:
                 try:
@@ -1232,8 +1296,9 @@ def call_openai(
                     fallback_kw = dict(_kw)
                     fallback_kw.pop("max_tokens", None)
                     stream = _client.chat.completions.create(**fallback_kw)  # type: ignore[union-attr]
+                _stream_holder["stream"] = stream
                 if _cs:
-                    _cs.set_stream(stream)
+                    _cs.set_stream(stream, _attempt_token)
                 for chunk in stream:
                     if chunk.choices and chunk.choices[0].delta.content:
                         _q.put(("data", chunk.choices[0].delta.content))
@@ -1292,17 +1357,9 @@ def call_openai(
             return content
         except AiArrangeCancelled:
             logger.info("AI arrangement cancelled during streaming")
-            try:
-                http_client.close()
-            except Exception:
-                pass
             raise
         except Exception as exc:
             if should_cancel and should_cancel():
-                try:
-                    http_client.close()
-                except Exception:
-                    pass
                 raise AiArrangeCancelled("AI 编曲已取消") from exc
             logger.warning("OpenAI request attempt %s failed: %s", attempt + 1, _describe_exception(exc))
             if not _is_retryable(exc) or attempt >= _MAX_RETRIES - 1:
@@ -1322,6 +1379,8 @@ def call_openai(
             if on_chunk:
                 on_chunk(f"[Retry {attempt + 1}/{_MAX_RETRIES} after {type(exc).__name__}, waiting {delay:.0f}s...]")
             _sleep_with_cancel(delay, should_cancel)
+        finally:
+            _cleanup_attempt()
 
     raise last_exc  # type: ignore[misc]
 
