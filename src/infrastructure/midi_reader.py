@@ -17,12 +17,14 @@ def _load_midi(path: Path) -> MidiFile:
     Tries UTF-8 → GBK → Shift-JIS → Latin-1 so that Chinese / Japanese
     track names display correctly instead of mojibake.
     """
+    last_exc: Exception | None = None
     for charset in _CHARSETS:
         try:
             return MidiFile(str(path), clip=True, charset=charset)
-        except (UnicodeDecodeError, ValueError):
+        except Exception as exc:
+            last_exc = exc
             continue
-    return MidiFile(str(path), clip=True, charset="latin1")
+    raise last_exc or OSError(f"Cannot load MIDI: {path}")
 
 MAJOR_PROFILE = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
 MINOR_PROFILE = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
@@ -247,7 +249,7 @@ def export_single_track_midi(
     if track_index < 0 or track_index >= len(midi.tracks):
         raise IndexError(f"track index out of range: {track_index}, track_count={len(midi.tracks)}")
 
-    target = MidiFile(type=1, ticks_per_beat=midi.ticks_per_beat)
+    target = MidiFile(type=1, ticks_per_beat=midi.ticks_per_beat, charset=midi.charset)
 
     if include_tempo_track and len(midi.tracks) > 0:
         tempo_track = midi.tracks[0].copy()
