@@ -39,6 +39,8 @@ class AiArrangeWorker(QThread):
         mode: str = "remap",
         style: str = "conservative",
         simplify: bool = False,
+        melody_aware: bool = False,
+        user_song_name: str = "",
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -54,6 +56,8 @@ class AiArrangeWorker(QThread):
         self.mode = mode
         self.style = style
         self.simplify = simplify
+        self.melody_aware = melody_aware
+        self.user_song_name = user_song_name
         self._cancel_state = CancellableState()
 
     def cancel(self) -> None:
@@ -78,6 +82,8 @@ class AiArrangeWorker(QThread):
                 on_chunk=self._on_chunk,
                 should_cancel=self.isInterruptionRequested,
                 cancel_state=self._cancel_state,
+                melody_aware=self.melody_aware,
+                user_song_name=self.user_song_name,
             )
             self.finished.emit(result)
         except AiArrangeCancelled as exc:

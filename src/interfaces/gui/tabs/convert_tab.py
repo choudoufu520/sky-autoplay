@@ -314,6 +314,21 @@ class ConvertTab(QWidget):
         self.ai_simplify_check.setChecked(False)
         ai_layout.addWidget(self.ai_simplify_check)
 
+        self.ai_melody_aware_check = QCheckBox()
+        self.ai_melody_aware_check.setChecked(False)
+        self.ai_melody_aware_check.toggled.connect(self._on_melody_aware_toggled)
+        ai_layout.addWidget(self.ai_melody_aware_check)
+
+        ai_song_row = QHBoxLayout()
+        self.ai_song_name_label = QLabel()
+        ai_song_row.addWidget(self.ai_song_name_label)
+        self.ai_song_name_edit = QLineEdit()
+        ai_song_row.addWidget(self.ai_song_name_edit, 1)
+        self.ai_song_name_widget = QWidget()
+        self.ai_song_name_widget.setLayout(ai_song_row)
+        self.ai_song_name_widget.setVisible(False)
+        ai_layout.addWidget(self.ai_song_name_widget)
+
         ai_opt_row = QHBoxLayout()
         self.ai_optimal_label = QLabel()
         self.ai_optimal_label.setWordWrap(True)
@@ -530,6 +545,10 @@ class ConvertTab(QWidget):
         self.ai_edit_prompt_btn.setText(tr("convert.ai_edit_prompt"))
         self.ai_simplify_check.setText(tr("convert.ai_simplify"))
         self.ai_simplify_check.setToolTip(tr("convert.ai_simplify_tip"))
+        self.ai_melody_aware_check.setText(tr("convert.ai_melody_aware"))
+        self.ai_melody_aware_check.setToolTip(tr("convert.ai_melody_aware_tip"))
+        self.ai_song_name_label.setText(tr("convert.ai_song_name"))
+        self.ai_song_name_edit.setPlaceholderText(tr("convert.ai_song_name_placeholder"))
         self.ai_url_edit.setPlaceholderText(tr("convert.ai_url_placeholder"))
         self.ai_arrange_btn.setToolTip(tr("convert.ai_tip"))
         self.ai_optimal_apply_btn.setText(tr("convert.ai_key_apply"))
@@ -693,6 +712,9 @@ class ConvertTab(QWidget):
         pid = self.profile_combo.currentText().strip() or config.default_profile
         profile = config.profiles.get(pid)
         return profile.transpose_semitones if profile else 0
+
+    def _on_melody_aware_toggled(self, checked: bool) -> None:
+        self.ai_song_name_widget.setVisible(checked)
 
     def _refresh_game_key(self) -> None:
         from src.application.ai_arranger import transpose_to_key_name
@@ -865,6 +887,8 @@ class ConvertTab(QWidget):
         mode = self.ai_mode_combo.currentData() or "remap"
         style = self.ai_style_combo.currentData() or "conservative"
         simplify = self.ai_simplify_check.isChecked()
+        melody_aware = self.ai_melody_aware_check.isChecked()
+        user_song_name = self.ai_song_name_edit.text().strip() if melody_aware else ""
 
         try:
             precheck = get_arrange_precheck(
@@ -919,6 +943,8 @@ class ConvertTab(QWidget):
             mode=mode,
             style=style,
             simplify=simplify,
+            melody_aware=melody_aware,
+            user_song_name=user_song_name,
             parent=self,
         )
         self._ai_worker.finished.connect(self._on_ai_finished)
@@ -955,12 +981,32 @@ class ConvertTab(QWidget):
         self._ai_last_result = result
         elapsed = self._ai_elapsed
 
-        self.ai_status_label.setText(tr("convert.ai_analyze_done").format(sec=elapsed))
+        rec_prefix = ""
+        if result.recognition and result.recognition.confidence in ("high", "medium"):
+            rec_prefix = tr("convert.ai_recognized").format(
+                name=result.recognition.song_name,
+                confidence=result.recognition.confidence,
+            ) + " | "
+        elif result.recognition and result.recognition.confidence in ("low", "none"):
+            rec_prefix = tr("convert.ai_not_recognized") + " | "
 
+        self.ai_status_label.setText(
+            rec_prefix + tr("convert.ai_analyze_done").format(sec=elapsed)
+        )
+
+        display_text = ""
+        if result.recognition and result.recognition.song_name:
+            display_text += (
+                f"[Song: {result.recognition.song_name} | "
+                f"Key: {result.recognition.detected_key} | "
+                f"Confidence: {result.recognition.confidence}]\n"
+                f"{result.recognition.verification_notes}\n\n"
+            )
         if result.analysis_text:
-            self.result_text.setPlainText(result.analysis_text)
+            display_text += result.analysis_text
         else:
-            self.result_text.setPlainText(result.explanation)
+            display_text += result.explanation
+        self.result_text.setPlainText(display_text)
 
         if result.mode == "extract" and result.role_map:
             self._ai_role_map = result.role_map
