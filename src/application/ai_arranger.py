@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
+import threading
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -995,6 +996,61 @@ StreamCallback = Callable[[str], None]
 CancelCallback = Callable[[], bool]
 
 
+class CancellableState:
+    """Thread-safe handle for force-cancelling an in-flight OpenAI request.
+
+    The worker thread stores the httpx client and stream here via
+    ``set_http_client`` / ``set_stream``.  The GUI thread calls
+    ``force_close`` to immediately abort the HTTP connection, making
+    the cancel responsive even while blocked on network I/O.
+    """
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._http_client: object | None = None
+        self._stream: object | None = None
+        self._closed = False
+
+    def set_http_client(self, http_client: object) -> None:
+        with self._lock:
+            if self._closed:
+                try:
+                    http_client.close()  # type: ignore[union-attr]
+                except Exception:
+                    pass
+                return
+            self._http_client = http_client
+            self._stream = None
+
+    def set_stream(self, stream: object) -> None:
+        with self._lock:
+            if self._closed:
+                try:
+                    stream.close()  # type: ignore[union-attr]
+                except Exception:
+                    pass
+                return
+            self._stream = stream
+
+    def force_close(self) -> None:
+        with self._lock:
+            self._closed = True
+            stream = self._stream
+            http_client = self._http_client
+            self._stream = None
+            self._http_client = None
+        if stream is not None:
+            try:
+                stream.close()  # type: ignore[union-attr]
+            except Exception:
+                pass
+        if http_client is not None:
+            try:
+                http_client.close()  # type: ignore[union-attr]
+            except Exception:
+                pass
+
+
 _MAX_RETRIES = 3
 _RETRY_BASE_DELAY = 2.0
 
@@ -1049,15 +1105,19 @@ def call_openai(
     on_chunk: StreamCallback | None = None,
     max_tokens: int = 16384,
     should_cancel: CancelCallback | None = None,
+    cancel_state: CancellableState | None = None,
 ) -> str:
     import httpx
     from openai import OpenAI, BadRequestError
 
     normalized_url = _normalize_base_url(base_url) if base_url else None
+    http_client = httpx.Client(timeout=httpx.Timeout(3000, connect=30))
+    if cancel_state:
+        cancel_state.set_http_client(http_client)
     client = OpenAI(
         api_key=api_key,
         base_url=normalized_url,
-        http_client=httpx.Client(timeout=httpx.Timeout(3000, connect=30)),
+        http_client=http_client,
     )
 
     create_kwargs: dict = {
@@ -1079,6 +1139,9 @@ def call_openai(
                 kw.pop("max_tokens", None)
                 stream = client.chat.completions.create(**kw)
 
+            if cancel_state:
+                cancel_state.set_stream(stream)
+
             parts: list[str] = []
             accumulated = ""
             for chunk in stream:
@@ -1098,6 +1161,8 @@ def call_openai(
             logger.info("AI arrangement cancelled during streaming")
             raise
         except Exception as exc:
+            if should_cancel and should_cancel():
+                raise AiArrangeCancelled("AI 编曲已取消") from exc
             logger.warning("OpenAI request attempt %s failed: %s", attempt + 1, _describe_exception(exc))
             if not _is_retryable(exc) or attempt >= _MAX_RETRIES - 1:
                 if isinstance(exc, BadRequestError):
@@ -1324,6 +1389,7 @@ def ai_arrange(
     simplify: bool = False,
     on_chunk: StreamCallback | None = None,
     should_cancel: CancelCallback | None = None,
+    cancel_state: CancellableState | None = None,
 ) -> AiArrangeResult:
     _raise_if_cancelled(should_cancel)
     available = get_available_notes(mapping, profile_id)
@@ -1396,6 +1462,7 @@ def ai_arrange(
                 on_chunk=on_chunk,
                 max_tokens=65536,
                 should_cancel=should_cancel,
+                cancel_state=cancel_state,
             )
             analysis_text, _, position_map = parse_ai_response(raw, "context")
         else:
@@ -1421,14 +1488,24 @@ def ai_arrange(
                 chunk_label = f"[Chunk {ci + 1}/{len(chunks)}]"
                 if on_chunk:
                     on_chunk(f"{chunk_label} Processing...\n" + "\n".join(all_raw_parts))
+
+                def _chunk_cb(
+                    accumulated: str,
+                    _label: str = chunk_label,
+                ) -> None:
+                    parts = list(all_raw_parts)
+                    parts.append(f"{_label}\n{accumulated}")
+                    on_chunk("\n\n".join(parts))
+
                 chunk_raw = call_openai(
                     api_key,
                     chunk_prompt,
                     base_url=base_url,
                     model=model,
-                    on_chunk=None,
+                    on_chunk=_chunk_cb if on_chunk else None,
                     max_tokens=65536,
                     should_cancel=should_cancel,
+                    cancel_state=cancel_state,
                 )
                 all_raw_parts.append(f"{chunk_label}\n{chunk_raw}")
                 chunk_analysis, _, chunk_positions = parse_ai_response(chunk_raw, "context")
@@ -1487,6 +1564,7 @@ def ai_arrange(
         model=model,
         on_chunk=on_chunk,
         should_cancel=should_cancel,
+        cancel_state=cancel_state,
     )
     analysis_text, note_map, _ = parse_ai_response(raw, "remap")
     note_map, fix_count = validate_note_map(note_map, available_set, available)

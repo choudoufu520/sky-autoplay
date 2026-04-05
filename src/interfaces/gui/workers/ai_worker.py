@@ -9,6 +9,7 @@ from src.application.ai_arranger import (
     AiArrangeResult,
     AiArrangeCancelled,
     AiArrangeError,
+    CancellableState,
     ai_arrange,
     build_retry_prompt,
     call_openai,
@@ -53,9 +54,11 @@ class AiArrangeWorker(QThread):
         self.mode = mode
         self.style = style
         self.simplify = simplify
+        self._cancel_state = CancellableState()
 
     def cancel(self) -> None:
         self.requestInterruption()
+        self._cancel_state.force_close()
 
     def run(self) -> None:
         try:
@@ -74,6 +77,7 @@ class AiArrangeWorker(QThread):
                 simplify=self.simplify,
                 on_chunk=self._on_chunk,
                 should_cancel=self.isInterruptionRequested,
+                cancel_state=self._cancel_state,
             )
             self.finished.emit(result)
         except AiArrangeCancelled as exc:
@@ -123,9 +127,11 @@ class AiRetryWorker(QThread):
         self.model = model
         self.mode = mode
         self.max_tokens = max_tokens
+        self._cancel_state = CancellableState()
 
     def cancel(self) -> None:
         self.requestInterruption()
+        self._cancel_state.force_close()
 
     def run(self) -> None:
         try:
@@ -137,6 +143,7 @@ class AiRetryWorker(QThread):
                 base_url=self.base_url, model=self.model,
                 on_chunk=self._on_chunk, max_tokens=self.max_tokens,
                 should_cancel=self.isInterruptionRequested,
+                cancel_state=self._cancel_state,
             )
             analysis_text, note_map, position_map = parse_ai_response(raw, self.mode)
             result = AiArrangeResult(
