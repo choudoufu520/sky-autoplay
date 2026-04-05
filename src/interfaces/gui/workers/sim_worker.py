@@ -28,6 +28,7 @@ class SimulationEngine(QObject):
         self._index = 0
         self._speed = 1.0
         self._start = 0.0
+        self._start_ms = 0
         self._total_ms = 0
         self._pending: list[tuple[float, str]] = []
         self._pressed: set[str] = set()
@@ -37,11 +38,15 @@ class SimulationEngine(QObject):
     def is_running(self) -> bool:
         return self._running
 
-    def start(self, chart: ChartDocument, speed: float = 1.0) -> None:
-        self._groups = _group_by_time(chart.events)
+    def start(self, chart: ChartDocument, speed: float = 1.0, start_ms: int = 0) -> None:
+        groups = _group_by_time(chart.events)
+        self._start_ms = max(start_ms, 0)
+        if self._start_ms > 0:
+            groups = [(t, evts) for t, evts in groups if t >= self._start_ms]
+        self._groups = groups
         self._index = 0
         self._speed = max(speed, 0.1)
-        self._total_ms = self._groups[-1][0] if self._groups else 0
+        self._total_ms = (self._groups[-1][0] - self._start_ms) if self._groups else 0
         self._pending.clear()
         self._pressed.clear()
         self._start = time.perf_counter()
@@ -66,7 +71,7 @@ class SimulationEngine(QObject):
             return
 
         elapsed_real = time.perf_counter() - self._start
-        elapsed_ms = elapsed_real * 1000.0 * self._speed
+        elapsed_ms = elapsed_real * 1000.0 * self._speed + self._start_ms
 
         still_pending: list[tuple[float, str]] = []
         for rel_ms, key in self._pending:
@@ -98,7 +103,7 @@ class SimulationEngine(QObject):
         self.progress.emit(
             min(self._index, total),
             total,
-            int(elapsed_ms),
+            int(elapsed_ms - self._start_ms),
             self._total_ms,
         )
 

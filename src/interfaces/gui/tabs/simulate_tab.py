@@ -27,6 +27,7 @@ from src.application.audio_engine import (
 )
 from src.infrastructure.repository import load_chart, load_mapping
 from src.interfaces.gui.i18n import on_language_changed, tr
+from src.interfaces.gui.widgets.note_timeline import NoteTimelineWidget
 from src.interfaces.gui.widgets.sky_keyboard import SkyKeyboardWidget
 from src.interfaces.gui.workers.sim_worker import SimulationEngine
 
@@ -77,6 +78,11 @@ class SimulateTab(QWidget):
         self.chart_browse.clicked.connect(self._browse_chart)
         chart_row.addWidget(self.chart_browse)
         layout.addLayout(chart_row)
+
+        self.start_from_label = QLabel()
+        layout.addWidget(self.start_from_label)
+        self.timeline = NoteTimelineWidget()
+        layout.addWidget(self.timeline)
 
         # ── controls ────────────────────────────────────────
         ctrl = QHBoxLayout()
@@ -165,6 +171,7 @@ class SimulateTab(QWidget):
 
     def set_chart_path(self, path: str) -> None:
         self.chart_edit.setText(path)
+        self._load_timeline(path)
 
     def set_mapping_path(self, path: str, auto_load: bool = False) -> None:
         self.map_edit.setText(path)
@@ -182,6 +189,9 @@ class SimulateTab(QWidget):
         self.chart_label.setText(tr("sim.chart"))
         self.chart_edit.setPlaceholderText(tr("sim.chart_placeholder"))
         self.chart_browse.setText(tr("browse"))
+
+        self.start_from_label.setText(tr("play.start_from"))
+        self.timeline.setToolTip(tr("play.tip_start_from"))
 
         self.mode_label.setText(tr("sim.mode"))
         self.speed_label.setText(tr("sim.speed"))
@@ -217,6 +227,18 @@ class SimulateTab(QWidget):
         )
         if path:
             self.chart_edit.setText(path)
+            self._load_timeline(path)
+
+    def _load_timeline(self, path: str) -> None:
+        if not path.strip():
+            self.timeline.clear()
+            return
+        try:
+            chart = load_chart(Path(path))
+            total_ms = max(e.time_ms for e in chart.events) if chart.events else 0
+            self.timeline.set_events(chart.events, total_ms)
+        except Exception:
+            self.timeline.clear()
 
     def _load_mapping(self) -> None:
         path = self.map_edit.text().strip()
@@ -313,8 +335,12 @@ class SimulateTab(QWidget):
         self.play_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
 
+        if chart.events and not self.timeline._bins:
+            total_ms = max(e.time_ms for e in chart.events)
+            self.timeline.set_events(chart.events, total_ms)
+
         self.log_text.appendPlainText(tr("sim.playback_started"))
-        self._engine.start(chart, speed)
+        self._engine.start(chart, speed, start_ms=self.timeline.position_ms)
 
     def _on_stop(self) -> None:
         if self._engine.is_running:

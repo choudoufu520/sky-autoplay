@@ -26,6 +26,7 @@ class PlayOptions:
     dry_run: bool = False
     debug: bool = False
     speed: float = 1.0
+    start_ms: int = 0
 
 
 def play_chart(
@@ -64,18 +65,21 @@ def play_chart(
             time.sleep(1)
 
     speed = max(options.speed, 0.1)
+    start_from = max(options.start_ms, 0)
 
     start = time.perf_counter()
     pressed_keys: set[str] = set()
 
     grouped = _group_by_time(chart.events)
+    if start_from > 0:
+        grouped = [(t, evts) for t, evts in grouped if t >= start_from]
     total_groups = len(grouped)
-    total_ms = grouped[-1][0] if grouped else 0
+    total_ms = (grouped[-1][0] - start_from) if grouped else 0
 
     for gi, (time_ms, events) in enumerate(grouped):
         if _stopped():
             break
-        target_real_ms = int(time_ms / speed) + options.latency_offset_ms
+        target_real_ms = int((time_ms - start_from) / speed) + options.latency_offset_ms
         _wait_until(start, target_real_ms, stop_event)
         if _stopped():
             break

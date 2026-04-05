@@ -142,6 +142,7 @@ def preview_track_game_command(
     latency_offset_ms: int = typer.Option(0, "--latency-offset-ms"),
     countdown_sec: int = typer.Option(3, "--countdown-sec"),
     chord_stagger_ms: int = typer.Option(0, "--chord-stagger-ms"),
+    start_ms: int = typer.Option(0, "--start-ms", help="Skip to this position (ms) before playing"),
     dry_run: bool = typer.Option(True, "--dry-run/--no-dry-run", help="Preview without key output"),
     debug: bool = typer.Option(True, "--debug/--no-debug"),
 ) -> None:
@@ -179,6 +180,7 @@ def preview_track_game_command(
         chord_stagger_ms=chord_stagger_ms,
         dry_run=dry_run,
         debug=debug,
+        start_ms=start_ms,
     )
     backend = None if play_options.dry_run else PynputInputBackend()
     play_chart(chart, backend, play_options)
@@ -191,6 +193,7 @@ def play_command(
     latency_offset_ms: int = typer.Option(0, "--latency-offset-ms"),
     countdown_sec: int = typer.Option(3, "--countdown-sec"),
     chord_stagger_ms: int = typer.Option(0, "--chord-stagger-ms"),
+    start_ms: int = typer.Option(0, "--start-ms", help="Skip to this position (ms) before playing"),
     dry_run: bool = typer.Option(False, "--dry-run"),
     debug: bool = typer.Option(False, "--debug"),
 ) -> None:
@@ -203,6 +206,7 @@ def play_command(
         chord_stagger_ms=int(play_cfg.get("chord_stagger_ms", chord_stagger_ms)),
         dry_run=bool(play_cfg.get("dry_run", dry_run)),
         debug=bool(play_cfg.get("debug", debug)),
+        start_ms=int(play_cfg.get("start_ms", start_ms)),
     )
 
     chart_doc = load_chart(chart)

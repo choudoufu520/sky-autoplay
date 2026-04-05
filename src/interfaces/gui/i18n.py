@@ -236,6 +236,8 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_stagger": "Delay between simultaneous keys to avoid the game missing inputs",
         "play.tip_tap_press": "How long each key is held down per tap (≥1 game frame ≈ 33ms at 30fps)",
         "play.tip_speed": "Playback speed multiplier (>1 = faster, <1 = slower)",
+        "play.start_from": "Start From:",
+        "play.tip_start_from": "Click the timeline to choose where playback begins",
         "play.tip_dry_run": "Simulate playback without sending actual key presses (for testing)",
 
         # ── SimulateTab ──
@@ -523,6 +525,8 @@ _T: dict[str, dict[str, str]] = {
         "play.tip_stagger": "同时按下多个键时的间隔，避免游戏漏键",
         "play.tip_tap_press": "每次点按的按住时长（需≥1帧，30fps下约33ms）",
         "play.tip_speed": "播放速度倍率（>1 加速，<1 减速）",
+        "play.start_from": "起始位置：",
+        "play.tip_start_from": "点击时间轴选择演奏起始位置",
         "play.tip_dry_run": "模拟演奏，不实际发送按键，用于调试",
 
         # ── 模拟演奏 ──

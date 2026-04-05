@@ -23,6 +23,7 @@ from src.infrastructure.input_backends import DryRunInputBackend, PynputInputBac
 from src.infrastructure.repository import load_chart
 from src.interfaces.gui.i18n import on_language_changed, tr
 from src.interfaces.gui.play_overlay import PlayOverlay
+from src.interfaces.gui.widgets.note_timeline import NoteTimelineWidget
 from src.interfaces.gui.workers.play_worker import PlayWorker
 
 _log = logging.getLogger(__name__)
@@ -97,6 +98,11 @@ class PlayTab(QWidget):
         self.form.addRow(self.debug_check)
         layout.addLayout(self.form)
 
+        self.start_from_label = QLabel()
+        layout.addWidget(self.start_from_label)
+        self.timeline = NoteTimelineWidget()
+        layout.addWidget(self.timeline)
+
         btn_row = QHBoxLayout()
         self.play_btn = QPushButton()
         self.play_btn.setObjectName("primaryBtn")
@@ -131,6 +137,7 @@ class PlayTab(QWidget):
         self.debug_check.setText(tr("play.debug"))
         self.play_btn.setText(tr("play.start"))
         self.stop_btn.setText(tr("play.stop"))
+        self.start_from_label.setText(tr("play.start_from"))
 
         self.latency_spin.setToolTip(tr("play.tip_latency"))
         self.countdown_spin.setToolTip(tr("play.tip_countdown"))
@@ -138,14 +145,28 @@ class PlayTab(QWidget):
         self.tap_press_spin.setToolTip(tr("play.tip_tap_press"))
         self.speed_combo.setToolTip(tr("play.tip_speed"))
         self.dry_run_check.setToolTip(tr("play.tip_dry_run"))
+        self.timeline.setToolTip(tr("play.tip_start_from"))
 
     def set_chart_path(self, path: str) -> None:
         self.chart_edit.setText(path)
+        self._load_timeline(path)
 
     def _browse(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("play.dialog_chart"), "", "JSON Files (*.json)")
         if path:
             self.chart_edit.setText(path)
+            self._load_timeline(path)
+
+    def _load_timeline(self, path: str) -> None:
+        if not path.strip():
+            self.timeline.clear()
+            return
+        try:
+            chart = load_chart(Path(path))
+            total_ms = max(e.time_ms for e in chart.events) if chart.events else 0
+            self.timeline.set_events(chart.events, total_ms)
+        except Exception:
+            self.timeline.clear()
 
     def _start_play(self) -> None:
         chart_path = self.chart_edit.text().strip()
@@ -159,6 +180,10 @@ class PlayTab(QWidget):
             self.log_text.appendPlainText(tr("play.err_load").format(err=exc))
             return
 
+        if chart.events and not self.timeline._bins:
+            total_ms = max(e.time_ms for e in chart.events)
+            self.timeline.set_events(chart.events, total_ms)
+
         speed = _SPEEDS[self.speed_combo.currentIndex()][1]
         options = PlayOptions(
             latency_offset_ms=self.latency_spin.value(),
@@ -168,6 +193,7 @@ class PlayTab(QWidget):
             dry_run=self.dry_run_check.isChecked(),
             debug=self.debug_check.isChecked(),
             speed=speed,
+            start_ms=self.timeline.position_ms,
         )
 
         if options.dry_run:

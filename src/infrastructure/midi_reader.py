@@ -32,7 +32,7 @@ class MidiTrackInfo:
 
 
 def read_midi_events(midi_path: Path, single_track: int | None = None) -> tuple[list[RawMidiEvent], int, int]:
-    midi = MidiFile(str(midi_path))
+    midi = MidiFile(str(midi_path), clip=True)
     ppq = midi.ticks_per_beat
 
     track_stream = _build_track_stream(midi, single_track)
@@ -85,7 +85,7 @@ def read_midi_events(midi_path: Path, single_track: int | None = None) -> tuple[
 
 
 def list_midi_tracks(midi_path: Path) -> tuple[int, list[MidiTrackInfo]]:
-    midi = MidiFile(str(midi_path))
+    midi = MidiFile(str(midi_path), clip=True)
     infos: list[MidiTrackInfo] = []
 
     for idx, track in enumerate(midi.tracks):
@@ -129,7 +129,7 @@ class MidiKeyAnalysis:
 
 
 def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKeyAnalysis:
-    midi = MidiFile(str(midi_path))
+    midi = MidiFile(str(midi_path), clip=True)
     result = MidiKeyAnalysis()
 
     scan_tracks = (
@@ -194,7 +194,7 @@ class MidiMeta:
 
 
 def read_midi_meta(midi_path: Path, single_track: int | None = None) -> MidiMeta:
-    midi = MidiFile(str(midi_path))
+    midi = MidiFile(str(midi_path), clip=True)
     ppq = midi.ticks_per_beat
     meta = MidiMeta()
 
@@ -227,7 +227,7 @@ def export_single_track_midi(
     output_path: Path,
     include_tempo_track: bool = True,
 ) -> None:
-    midi = MidiFile(str(midi_path))
+    midi = MidiFile(str(midi_path), clip=True)
     if track_index < 0 or track_index >= len(midi.tracks):
         raise IndexError(f"track index out of range: {track_index}, track_count={len(midi.tracks)}")
 
