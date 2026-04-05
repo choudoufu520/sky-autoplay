@@ -8,6 +8,22 @@ from mido import MidiFile, merge_tracks, tick2second
 
 PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
+_CHARSETS = ("utf-8", "gbk", "shift_jis", "latin1")
+
+
+def _load_midi(path: Path) -> MidiFile:
+    """Load a MIDI file, auto-detecting text encoding for track names.
+
+    Tries UTF-8 → GBK → Shift-JIS → Latin-1 so that Chinese / Japanese
+    track names display correctly instead of mojibake.
+    """
+    for charset in _CHARSETS:
+        try:
+            return MidiFile(str(path), clip=True, charset=charset)
+        except (UnicodeDecodeError, ValueError):
+            continue
+    return MidiFile(str(path), clip=True, charset="latin1")
+
 MAJOR_PROFILE = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
 MINOR_PROFILE = [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0]
 
@@ -32,7 +48,7 @@ class MidiTrackInfo:
 
 
 def read_midi_events(midi_path: Path, single_track: int | None = None) -> tuple[list[RawMidiEvent], int, int]:
-    midi = MidiFile(str(midi_path), clip=True)
+    midi = _load_midi(midi_path)
     ppq = midi.ticks_per_beat
 
     track_stream = _build_track_stream(midi, single_track)
@@ -85,7 +101,7 @@ def read_midi_events(midi_path: Path, single_track: int | None = None) -> tuple[
 
 
 def list_midi_tracks(midi_path: Path) -> tuple[int, list[MidiTrackInfo]]:
-    midi = MidiFile(str(midi_path), clip=True)
+    midi = _load_midi(midi_path)
     infos: list[MidiTrackInfo] = []
 
     for idx, track in enumerate(midi.tracks):
@@ -129,7 +145,7 @@ class MidiKeyAnalysis:
 
 
 def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKeyAnalysis:
-    midi = MidiFile(str(midi_path), clip=True)
+    midi = _load_midi(midi_path)
     result = MidiKeyAnalysis()
 
     scan_tracks = (
@@ -194,7 +210,7 @@ class MidiMeta:
 
 
 def read_midi_meta(midi_path: Path, single_track: int | None = None) -> MidiMeta:
-    midi = MidiFile(str(midi_path), clip=True)
+    midi = _load_midi(midi_path)
     ppq = midi.ticks_per_beat
     meta = MidiMeta()
 
@@ -227,7 +243,7 @@ def export_single_track_midi(
     output_path: Path,
     include_tempo_track: bool = True,
 ) -> None:
-    midi = MidiFile(str(midi_path), clip=True)
+    midi = _load_midi(midi_path)
     if track_index < 0 or track_index >= len(midi.tracks):
         raise IndexError(f"track index out of range: {track_index}, track_count={len(midi.tracks)}")
 

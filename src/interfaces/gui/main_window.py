@@ -133,11 +133,20 @@ class MainWindow(QMainWindow):
         self.tracks_tab.preview_requested.connect(self._on_preview_requested)
         self.tracks_tab.key_analyzed.connect(self._on_key_analyzed)
         self.convert_tab.chart_saved.connect(self._on_chart_saved)
+        self.convert_tab.midi_changed.connect(self._sync_midi_path)
+        self.preview_tab.midi_changed.connect(self._sync_midi_path)
+
+    def _sync_midi_path(self, path: str) -> None:
+        if self.tracks_tab.file_edit.text() != path:
+            self.tracks_tab.set_midi_path(path)
+        if self.convert_tab.midi_edit.text() != path:
+            self.convert_tab.set_midi_path(path)
+        if self.preview_tab.midi_edit.text() != path:
+            self.preview_tab.set_midi_path(path)
+        self.status_label.setText(tr("status.midi_loaded").format(path=path))
 
     def _on_midi_loaded(self, path: str) -> None:
-        self.convert_tab.set_midi_path(path)
-        self.preview_tab.set_midi_path(path)
-        self.status_label.setText(tr("status.midi_loaded").format(path=path))
+        self._sync_midi_path(path)
         self.tabs.setCurrentWidget(self.convert_tab)
 
     def _on_preview_requested(self, path: str, track_index: int) -> None:

@@ -89,6 +89,9 @@ class TracksTab(QWidget):
         if self._last_analysis is not None:
             self._show_key_analysis(self._last_analysis)
 
+    def set_midi_path(self, path: str) -> None:
+        self.file_edit.setText(path)
+
     def _browse(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("tracks.dialog_title"), "", "MIDI Files (*.mid *.midi)")
         if path:

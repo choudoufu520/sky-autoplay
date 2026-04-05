@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
+from datetime import datetime
 import logging
 from pathlib import Path
 
@@ -64,6 +65,7 @@ class _OptimalWorker(QThread):
 
 class ConvertTab(QWidget):
     chart_saved = Signal(str)
+    midi_changed = Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -455,7 +457,8 @@ class ConvertTab(QWidget):
         self._midi_path = path
         self.midi_edit.setText(path)
         stem = Path(path).stem
-        self.output_edit.setText(f"output/{stem}.json")
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.output_edit.setText(f"output/{stem}_{ts}.json")
         self._refresh_track_list(path)
         self._refresh_optimal_hint()
 
@@ -626,6 +629,7 @@ class ConvertTab(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("convert.dialog_midi"), "", "MIDI Files (*.mid *.midi)")
         if path:
             self.set_midi_path(path)
+            self.midi_changed.emit(path)
 
     def _browse_mapping(self) -> None:
         path, _ = QFileDialog.getOpenFileName(self, tr("convert.dialog_mapping"), "", "YAML Files (*.yaml *.yml)")
@@ -1228,6 +1232,11 @@ class ConvertTab(QWidget):
             self.result_text.setPlainText(tr("convert.err_convert").format(err=exc))
             return
 
+        out = Path(output_path)
+        if self._ai_position_map:
+            output_path = str(out.with_stem(out.stem + "_ai-context"))
+        elif self._ai_note_map:
+            output_path = str(out.with_stem(out.stem + "_ai-remap"))
         save_chart(Path(output_path), chart)
         self._last_chart = chart
         self.export_jianpu_btn.setEnabled(True)

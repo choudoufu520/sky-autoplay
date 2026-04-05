@@ -15,11 +15,15 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from PySide6.QtCore import Signal
+
 from src.infrastructure.midi_reader import export_single_track_midi, list_midi_tracks
 from src.interfaces.gui.i18n import on_language_changed, tr
 
 
 class PreviewTab(QWidget):
+    midi_changed = Signal(str)
+
     def __init__(self) -> None:
         super().__init__()
         layout = QVBoxLayout(self)
@@ -107,6 +111,7 @@ class PreviewTab(QWidget):
         path, _ = QFileDialog.getOpenFileName(self, tr("preview.dialog_midi"), "", "MIDI Files (*.mid *.midi)")
         if path:
             self.midi_edit.setText(path)
+            self.midi_changed.emit(path)
 
     def _browse_save(self) -> None:
         path, _ = QFileDialog.getSaveFileName(self, tr("preview.dialog_save"), "", "MIDI Files (*.mid)")
