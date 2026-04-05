@@ -25,6 +25,8 @@ class ConvertOptions:
     ai_note_map: dict[int, int] | None = None
     ai_position_map: dict[tuple[int, int], int] = field(default_factory=dict)
     denoise: bool = False
+    denoise_max_simultaneous: int = 3
+    denoise_max_chord_repeats: int = 4
 
 
 def _resolve_profile_for_event(
@@ -311,7 +313,11 @@ def convert_midi_to_chart(
         metadata=ChartMetadata(source_midi=str(midi_path), ppq=ppq, tempo_event_count=tempo_count),
     )
     if options.denoise:
-        chart, removed = denoise_chart(chart)
+        chart, removed = denoise_chart(
+            chart,
+            max_simultaneous=options.denoise_max_simultaneous,
+            max_chord_repeats=options.denoise_max_chord_repeats,
+        )
         if removed:
             warnings.append(f"Denoise: removed {removed} duplicate/dense note events")
 
@@ -341,47 +347,109 @@ def _dedup_simultaneous(
     return kept
 
 
-def _limit_consecutive_same(
+def _limit_key_repeat_rate(
     events: list[ChartEvent],
-    max_consecutive: int,
-    gap_ms: int = 300,
+    max_per_burst: int,
+    gap_ms: int = 500,
 ) -> list[ChartEvent]:
-    """Thin out runs of the same key repeating in quick succession.
+    """Limit how often each key can repeat within a burst, tracked per-key.
 
-    When a key is tapped more than *max_consecutive* times in a row
-    (with no other key in between, each gap < *gap_ms*), keep the first,
-    last, and up to max_consecutive-2 evenly spaced middle hits.
-    This handles tremolo / pedal-point patterns.
+    Unlike the old sequential-run approach, this tracks each key
+    independently so that repeating chord patterns (e.g. the same 6+3
+    chord on every eighth note for a whole bar) are properly detected
+    even though different keys interleave in the event stream.
+
+    A "burst" for a given key is a sequence of hits where each
+    consecutive pair is within *gap_ms*. When a burst exceeds
+    *max_per_burst*, only the first, last, and evenly spaced middle
+    hits are kept.
     """
     if not events:
         return events
 
-    kept: list[ChartEvent] = []
-    run: list[ChartEvent] = [events[0]]
+    key_indices: dict[str, list[int]] = {}
+    for i, ev in enumerate(events):
+        key_indices.setdefault(ev.key, []).append(i)
 
-    def _flush_run() -> None:
-        if len(run) <= max_consecutive:
-            kept.extend(run)
-        else:
-            kept.append(run[0])
-            inner_count = max_consecutive - 2
+    remove: set[int] = set()
+    for indices in key_indices.values():
+        if len(indices) <= max_per_burst:
+            continue
+        bursts: list[list[int]] = []
+        current_burst = [indices[0]]
+        for idx in indices[1:]:
+            if events[idx].time_ms - events[current_burst[-1]].time_ms < gap_ms:
+                current_burst.append(idx)
+            else:
+                bursts.append(current_burst)
+                current_burst = [idx]
+        bursts.append(current_burst)
+
+        for burst in bursts:
+            if len(burst) <= max_per_burst:
+                continue
+            keep = {burst[0], burst[-1]}
+            inner_count = max_per_burst - 2
             if inner_count > 0:
-                step = (len(run) - 2) / (inner_count + 1)
+                step = (len(burst) - 2) / (inner_count + 1)
                 for i in range(1, inner_count + 1):
-                    kept.append(run[int(i * step)])
-            kept.append(run[-1])
+                    keep.add(burst[int(i * step)])
+            remove.update(set(burst) - keep)
 
-    for ev in events[1:]:
-        tail = run[-1]
-        same_key = ev.key == tail.key
-        close_in_time = (ev.time_ms - tail.time_ms) < gap_ms
-        if same_key and close_in_time:
-            run.append(ev)
+    return [ev for i, ev in enumerate(events) if i not in remove]
+
+
+def _thin_repeating_chord(
+    events: list[ChartEvent],
+    max_repeats: int = 4,
+    window_ms: int = 50,
+) -> list[ChartEvent]:
+    """Detect and thin repeating chord patterns (same set of keys).
+
+    Groups events into time slots (within *window_ms*), represents each
+    slot as a frozenset of keys, then finds consecutive runs of identical
+    chord shapes.  Runs longer than *max_repeats* are thinned to keep
+    the first, last, and evenly spaced middle occurrences.
+    """
+    if not events:
+        return events
+
+    slots: list[tuple[frozenset[str], list[int]]] = []
+    current_keys: list[str] = [events[0].key]
+    current_indices: list[int] = [0]
+    anchor = events[0].time_ms
+    for i in range(1, len(events)):
+        if events[i].time_ms - anchor <= window_ms:
+            current_keys.append(events[i].key)
+            current_indices.append(i)
         else:
-            _flush_run()
-            run = [ev]
-    _flush_run()
-    return kept
+            slots.append((frozenset(current_keys), current_indices))
+            current_keys = [events[i].key]
+            current_indices = [i]
+            anchor = events[i].time_ms
+    slots.append((frozenset(current_keys), current_indices))
+
+    remove: set[int] = set()
+    run_start = 0
+    while run_start < len(slots):
+        shape = slots[run_start][0]
+        run_end = run_start + 1
+        while run_end < len(slots) and slots[run_end][0] == shape:
+            run_end += 1
+        run_len = run_end - run_start
+        if run_len > max_repeats:
+            keep_slot_positions = {0, run_len - 1}
+            inner = max_repeats - 2
+            if inner > 0:
+                step = (run_len - 2) / (inner + 1)
+                for k in range(1, inner + 1):
+                    keep_slot_positions.add(int(k * step))
+            for offset in range(run_len):
+                if offset not in keep_slot_positions:
+                    remove.update(slots[run_start + offset][1])
+        run_start = run_end
+
+    return [ev for i, ev in enumerate(events) if i not in remove]
 
 
 def _thin_simultaneous(
@@ -427,15 +495,26 @@ def denoise_chart(
     chart: ChartDocument,
     *,
     dedup_window_ms: int = 30,
-    max_consecutive_same: int = 3,
-    max_simultaneous: int = 4,
+    max_key_per_burst: int = 3,
+    burst_gap_ms: int = 500,
+    max_chord_repeats: int = 4,
+    max_simultaneous: int = 3,
 ) -> tuple[ChartDocument, int]:
     """Remove duplicate / overly dense note events from a converted chart.
 
-    Applies three music-theory-informed rules in order:
-    1. Same-key deduplication within a short time window (unison / octave collapse)
-    2. Consecutive same-key rate limiting (tremolo / pedal point)
-    3. Simultaneous-key thinning (dense chords exceeding hand capacity)
+    Applies four music-theory-informed rules in order:
+
+    1. **Same-key dedup** — remove duplicate taps on the same key within
+       *dedup_window_ms* (unison doublings, octave collapse).
+    2. **Per-key rate limit** — for each key independently, detect bursts
+       of rapid repetition and thin them.  Catches tremolo, pedal point,
+       and repeating accompaniment patterns even when interleaved with
+       other keys in chords.
+    3. **Repeating-chord thin** — detect consecutive identical chord shapes
+       (same set of keys) and reduce long runs.  Directly targets the
+       "same chord on every eighth note for a whole bar" pattern.
+    4. **Simultaneous thin** — when too many different keys fire at once,
+       keep only the most important ones.
 
     Only ``tap`` events are filtered; ``down``/``up`` pairs are kept intact.
     Returns (denoised_chart, number_of_removed_events).
@@ -445,7 +524,8 @@ def denoise_chart(
     original_count = len(taps)
 
     taps = _dedup_simultaneous(taps, dedup_window_ms)
-    taps = _limit_consecutive_same(taps, max_consecutive_same)
+    taps = _limit_key_repeat_rate(taps, max_key_per_burst, burst_gap_ms)
+    taps = _thin_repeating_chord(taps, max_chord_repeats)
     taps = _thin_simultaneous(taps, max_simultaneous)
 
     merged = sorted(taps + others, key=lambda e: e.time_ms)

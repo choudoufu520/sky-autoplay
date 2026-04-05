@@ -149,14 +149,35 @@ class ConvertTab(QWidget):
         self.form.addRow(self.tracks_label, self.tracks_combo)
 
         self.snap_check = QCheckBox()
-        self.snap_check.setChecked(True)
+        self.snap_check.setChecked(False)
         self.form.addRow(self.snap_check)
 
         self.strict_check = QCheckBox()
         self.form.addRow(self.strict_check)
 
         self.denoise_check = QCheckBox()
+        self.denoise_check.setChecked(True)
+        self.denoise_check.stateChanged.connect(self._toggle_denoise_params)
         self.form.addRow(self.denoise_check)
+
+        denoise_params = QHBoxLayout()
+        self.denoise_max_sim_label = QLabel()
+        denoise_params.addWidget(self.denoise_max_sim_label)
+        self.denoise_max_sim_spin = QSpinBox()
+        self.denoise_max_sim_spin.setRange(1, 8)
+        self.denoise_max_sim_spin.setValue(3)
+        self.denoise_max_sim_spin.setFixedWidth(60)
+        denoise_params.addWidget(self.denoise_max_sim_spin)
+        denoise_params.addSpacing(12)
+        self.denoise_max_repeat_label = QLabel()
+        denoise_params.addWidget(self.denoise_max_repeat_label)
+        self.denoise_max_repeat_spin = QSpinBox()
+        self.denoise_max_repeat_spin.setRange(1, 16)
+        self.denoise_max_repeat_spin.setValue(4)
+        self.denoise_max_repeat_spin.setFixedWidth(60)
+        denoise_params.addWidget(self.denoise_max_repeat_spin)
+        denoise_params.addStretch()
+        self.form.addRow(denoise_params)
 
         self.preview_midi_check = QCheckBox()
         self.form.addRow(self.preview_midi_check)
@@ -414,6 +435,10 @@ class ConvertTab(QWidget):
         self.strict_check.setText(tr("convert.strict"))
         self.denoise_check.setText(tr("convert.denoise"))
         self.denoise_check.setToolTip(tr("convert.denoise_tip"))
+        self.denoise_max_sim_label.setText(tr("convert.denoise_max_sim"))
+        self.denoise_max_sim_spin.setToolTip(tr("convert.denoise_max_sim_tip"))
+        self.denoise_max_repeat_label.setText(tr("convert.denoise_max_repeat"))
+        self.denoise_max_repeat_spin.setToolTip(tr("convert.denoise_max_repeat_tip"))
         self.preview_midi_check.setText(tr("convert.preview_midi"))
         self.convert_btn.setText(tr("convert.btn"))
         self.listen_btn.setText(tr("convert.listen"))
@@ -568,6 +593,13 @@ class ConvertTab(QWidget):
         """Show/hide AI internals and adapt the bottom action bar."""
         self._ai_content.setVisible(enabled)
         self.convert_btn.setVisible(not enabled)
+
+    def _toggle_denoise_params(self) -> None:
+        enabled = self.denoise_check.isChecked()
+        self.denoise_max_sim_spin.setEnabled(enabled)
+        self.denoise_max_sim_label.setEnabled(enabled)
+        self.denoise_max_repeat_spin.setEnabled(enabled)
+        self.denoise_max_repeat_label.setEnabled(enabled)
 
     def _toggle_api_settings(self) -> None:
         expanded = self.ai_settings_toggle.isChecked()
@@ -1140,6 +1172,8 @@ class ConvertTab(QWidget):
             ai_note_map=ai_note_map,
             ai_position_map=ai_position_map or {},
             denoise=self.denoise_check.isChecked(),
+            denoise_max_simultaneous=self.denoise_max_sim_spin.value(),
+            denoise_max_chord_repeats=self.denoise_max_repeat_spin.value(),
         )
 
         try:
@@ -1279,6 +1313,8 @@ class ConvertTab(QWidget):
             ai_note_map=self._ai_note_map,
             ai_position_map=self._ai_position_map or {},
             denoise=self.denoise_check.isChecked(),
+            denoise_max_simultaneous=self.denoise_max_sim_spin.value(),
+            denoise_max_chord_repeats=self.denoise_max_repeat_spin.value(),
         )
 
         try:

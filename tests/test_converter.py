@@ -264,46 +264,112 @@ class TestDenoiseDeduplicateSimultaneous:
         assert removed == 0
 
 
-class TestDenoiseLimitConsecutiveSame:
-    """Rule 2: limit consecutive same-key repeats (tremolo/pedal point)."""
+class TestDenoiseKeyRepeatRate:
+    """Rule 2: per-key rate limiting (tremolo / pedal / chord repetition)."""
 
-    def test_trims_long_run(self):
+    def test_trims_single_key_burst(self):
         events = [_tap(i * 50, "y") for i in range(8)]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
         keys = [e.key for e in result.events]
         assert all(k == "y" for k in keys)
         assert len(keys) == 3
         assert removed == 5
 
-    def test_keeps_short_run(self):
+    def test_keeps_short_burst(self):
         events = [_tap(i * 50, "y") for i in range(3)]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
         assert len(result.events) == 3
         assert removed == 0
 
-    def test_run_broken_by_different_key(self):
-        events = [
-            _tap(0, "y"), _tap(50, "y"), _tap(100, "y"),
-            _tap(150, "u"),
-            _tap(200, "y"), _tap(250, "y"), _tap(300, "y"),
-        ]
+    def test_tracks_keys_independently_through_chords(self):
+        """The key improvement: detects per-key repetition even when
+        different keys in a chord interleave in the event stream."""
+        events = []
+        for i in range(8):
+            events.append(_tap(i * 100, "y"))
+            events.append(_tap(i * 100, "u"))
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
-        assert len(result.events) == 7
-        assert removed == 0
+        result, removed = denoise_chart(
+            chart, dedup_window_ms=0, max_key_per_burst=3,
+            max_chord_repeats=99, max_simultaneous=99,
+        )
+        assert removed > 0
+        y_count = sum(1 for e in result.events if e.key == "y")
+        u_count = sum(1 for e in result.events if e.key == "u")
+        assert y_count <= 3
+        assert u_count <= 3
 
     def test_preserves_first_and_last(self):
         events = [_tap(i * 50, "y") for i in range(10)]
         chart = _chart(*events)
-        result, _ = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
-        assert result.events[0].time_ms == 0
-        assert result.events[-1].time_ms == 450
+        result, _ = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
+        y_events = [e for e in result.events if e.key == "y"]
+        assert y_events[0].time_ms == 0
+        assert y_events[-1].time_ms == 450
+
+    def test_separate_bursts_kept_independently(self):
+        """Two bursts separated by a large gap should be thinned separately."""
+        burst1 = [_tap(i * 50, "y") for i in range(3)]
+        burst2 = [_tap(2000 + i * 50, "y") for i in range(3)]
+        chart = _chart(*(burst1 + burst2))
+        result, removed = denoise_chart(
+            chart, dedup_window_ms=0, max_key_per_burst=3, burst_gap_ms=500,
+        )
+        assert len(result.events) == 6
+        assert removed == 0
+
+
+class TestDenoiseRepeatingChord:
+    """Rule 3: thin repeating chord patterns (same shape on every beat)."""
+
+    def test_thins_identical_chord_run(self):
+        """8 repetitions of the same 2-key chord → kept to max_chord_repeats."""
+        events = []
+        for i in range(8):
+            events.append(_tap(i * 250, "y"))
+            events.append(_tap(i * 250, "u"))
+        chart = _chart(*events)
+        result, removed = denoise_chart(
+            chart, dedup_window_ms=0, max_key_per_burst=99,
+            max_chord_repeats=3, max_simultaneous=99,
+        )
+        assert removed > 0
+        slots = set()
+        for e in result.events:
+            slots.add(e.time_ms)
+        assert len(slots) <= 3
+
+    def test_keeps_varied_chords(self):
+        """Different chord shapes should not be thinned."""
+        events = [
+            _tap(0, "y"), _tap(0, "u"),
+            _tap(250, "y"), _tap(250, "i"),
+            _tap(500, "y"), _tap(500, "o"),
+        ]
+        chart = _chart(*events)
+        result, removed = denoise_chart(
+            chart, dedup_window_ms=0, max_key_per_burst=99,
+            max_chord_repeats=2, max_simultaneous=99,
+        )
+        assert removed == 0
+
+    def test_realistic_accompaniment_pattern(self):
+        """Simulates measure 45 from the screenshot: same chord 8x per bar."""
+        events = []
+        for i in range(8):
+            events.append(_tap(i * 250, "6", duration_ms=200))
+            events.append(_tap(i * 250, "3", duration_ms=200))
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, dedup_window_ms=0)
+        assert removed >= 8
+        total = len(result.events)
+        assert total <= 8
 
 
 class TestDenoiseThinSimultaneous:
-    """Rule 3: thin dense simultaneous events beyond max_simultaneous."""
+    """Rule 4: thin dense simultaneous events beyond max_simultaneous."""
 
     def test_thins_dense_chord(self):
         events = [
@@ -312,12 +378,11 @@ class TestDenoiseThinSimultaneous:
             _tap(0, "i", duration_ms=300),
             _tap(0, "o", duration_ms=50),
             _tap(0, "p", duration_ms=150),
-            _tap(0, "h", duration_ms=10),
         ]
         chart = _chart(*events)
         result, removed = denoise_chart(chart, dedup_window_ms=0, max_simultaneous=3)
         assert len(result.events) == 3
-        assert removed == 3
+        assert removed == 2
         kept_keys = {e.key for e in result.events}
         assert "i" in kept_keys
         assert "y" in kept_keys
@@ -340,25 +405,37 @@ class TestDenoiseThinSimultaneous:
 
 
 class TestDenoiseIntegration:
-    """All three rules applied together."""
+    """All four rules applied together."""
 
     def test_combined_dedup_and_thin(self):
         events = [
             _tap(0, "y"), _tap(0, "y"),
             _tap(0, "u"), _tap(5, "i"),
             _tap(0, "o"), _tap(0, "p"),
-            _tap(0, "h"), _tap(0, "j"),
         ]
         chart = _chart(*events)
         result, removed = denoise_chart(
-            chart, dedup_window_ms=30, max_simultaneous=4,
+            chart, dedup_window_ms=30, max_simultaneous=3,
         )
         assert removed > 0
         keys_at_0 = [e.key for e in result.events if e.time_ms <= 30]
-        assert len(set(keys_at_0)) <= 4
+        assert len(set(keys_at_0)) <= 3
 
     def test_empty_chart(self):
         chart = _chart()
         result, removed = denoise_chart(chart)
         assert len(result.events) == 0
         assert removed == 0
+
+    def test_full_pipeline_realistic(self):
+        """Simulates a bar with dense repeating chords + unison duplicates."""
+        events = []
+        for i in range(8):
+            t = i * 250
+            events.append(_tap(t, "6", duration_ms=200))
+            events.append(_tap(t, "3", duration_ms=200))
+            events.append(_tap(t, "6", duration_ms=100))  # unison dup
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart)
+        assert removed >= 10
+        assert len(result.events) <= 8
