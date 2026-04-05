@@ -80,6 +80,15 @@ class PositionRemap:
 
 
 @dataclass(slots=True)
+class SongRecognition:
+    song_name: str = ""
+    detected_key: str = ""
+    melody_description: str = ""
+    confidence: str = ""  # "high" | "medium" | "low" | "none"
+    verification_notes: str = ""
+
+
+@dataclass(slots=True)
 class AiArrangeResult:
     note_map: dict[int, int] = field(default_factory=dict)
     position_map: list[PositionRemap] = field(default_factory=list)
@@ -90,6 +99,7 @@ class AiArrangeResult:
     prompt: str = ""
     unmapped_count: int = 0
     total_notes: int = 0
+    recognition: SongRecognition | None = None
 
 
 @dataclass(slots=True)
@@ -292,6 +302,7 @@ def build_remap_prompt(
     key_analysis: MidiKeyAnalysis | None = None,
     optimal_hint: str = "",
     simplify: bool = False,
+    melody_knowledge: str = "",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
     unmapped_lines = []
@@ -309,7 +320,10 @@ def build_remap_prompt(
 
     simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
-    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    raw_meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    meta_block = raw_meta_block
+    if melody_knowledge:
+        meta_block = f"{raw_meta_block}\n{melody_knowledge}"
 
     total_unmapped = sum(unmapped_counts[n] for n in unmapped)
     high_freq = [n for n in unmapped if unmapped_counts[n] >= max(3, total_unmapped * 0.1)]
@@ -663,6 +677,7 @@ def build_context_prompt(
     simplify: bool = False,
     continuation_context: str = "",
     initial_previous_melody: int | None = None,
+    melody_knowledge: str = "",
 ) -> str:
     avail_desc = ", ".join(f"{n}({_midi_to_name(n)})" for n in available)
 
@@ -680,7 +695,10 @@ def build_context_prompt(
 
     simplify_block = _SIMPLIFY_BLOCK if simplify else ""
 
-    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    raw_meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    meta_block = raw_meta_block
+    if melody_knowledge:
+        meta_block = f"{raw_meta_block}\n{melody_knowledge}"
 
     templates = _load_templates()
     template = templates.get("context_template", "")
@@ -815,10 +833,14 @@ def build_extract_prompt(
     key_analysis: MidiKeyAnalysis | None = None,
     continuation_context: str = "",
     initial_previous_melody: int | None = None,
+    melody_knowledge: str = "",
 ) -> str:
     groups = _group_notes_for_extract(events, meta=meta)
     sequence_text = _format_extract_sequence(groups, meta, initial_previous_melody)
-    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    raw_meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+    meta_block = raw_meta_block
+    if melody_knowledge:
+        meta_block = f"{raw_meta_block}\n{melody_knowledge}"
 
     templates = _load_templates()
     template = templates.get("extract_template", "")
@@ -889,6 +911,158 @@ def _parse_extract_ai_response(response: str) -> tuple[str, list[RoleClassificat
         ) from exc
 
     return analysis_text, roles
+
+
+# ── Song recognition (melody-aware arrangement) ────────────
+
+
+_RECOGNITION_BARS = 20
+
+
+def _format_recognition_sequence(
+    groups: list[_NoteGroup],
+    meta: MidiMeta | None,
+) -> str:
+    """Format note groups for recognition prompt (simplified, no status tags)."""
+    bar_ms = 2000.0
+    if meta:
+        try:
+            parts = meta.time_signature.split("/")
+            beats = int(parts[0])
+        except (ValueError, IndexError):
+            beats = 4
+        if meta.bpm > 0:
+            bar_ms = (60_000 / meta.bpm) * beats
+
+    lines: list[str] = []
+    current_bar = 0
+    for g in groups:
+        bar_num = int(g.time_ms / bar_ms) + 1
+        if bar_num > _RECOGNITION_BARS:
+            break
+        if bar_num != current_bar:
+            current_bar = bar_num
+            lines.append(f"\n--- Bar {bar_num} ---")
+
+        parts: list[str] = []
+        for grouped in sorted(g.notes, key=lambda x: x.final_note):
+            parts.append(
+                f"{grouped.final_note}({midi_to_name(grouped.final_note)}) "
+                f"dur={grouped.duration_ms}ms vel={grouped.velocity}"
+            )
+        lines.append(f"[t={g.time_ms}ms] {' | '.join(parts)}")
+    return "\n".join(lines)
+
+
+def _truncate_events_to_bars(
+    events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+    max_bars: int = _RECOGNITION_BARS,
+) -> list[RawMidiEvent]:
+    """Return only the events within the first *max_bars* bars."""
+    bar_ms = _get_bar_ms(meta)
+    cutoff = max_bars * bar_ms
+    return [ev for ev in events if ev.time_ms < cutoff]
+
+
+def build_recognition_prompt(
+    events: list[RawMidiEvent],
+    filename: str = "",
+    meta: MidiMeta | None = None,
+    key_analysis: MidiKeyAnalysis | None = None,
+    user_song_name: str = "",
+) -> str:
+    """Build the Phase 1 song recognition prompt."""
+    truncated = _truncate_events_to_bars(events, meta, _RECOGNITION_BARS)
+    groups = _group_notes_for_extract(truncated, meta=meta)
+    sequence_text = _format_recognition_sequence(groups, meta)
+    meta_block = _format_midi_meta(meta, filename, key_analysis) if meta else ""
+
+    user_song_hint = ""
+    if user_song_name:
+        user_song_hint = (
+            f"The user believes this piece is: \"{user_song_name}\"\n"
+            f"Use this as a strong hint. Verify whether the MIDI data matches this song."
+        )
+    elif filename:
+        user_song_hint = (
+            f"Try to identify the song from the filename \"{filename}\" and the musical content."
+        )
+
+    templates = _load_templates()
+    template = templates.get("recognition_template", "")
+    return template.format_map({
+        "meta_block": meta_block,
+        "user_song_hint": user_song_hint,
+        "sequence_text": sequence_text,
+    })
+
+
+def parse_recognition_response(response: str) -> SongRecognition:
+    """Parse the Phase 1 recognition response into a SongRecognition."""
+    rec_match = re.search(r"##\s*Recognition\s*\n", response, re.IGNORECASE)
+    analysis_match = re.search(r"##\s*Analysis\s*\n", response, re.IGNORECASE)
+
+    verification_notes_from_analysis = ""
+    if analysis_match and rec_match:
+        verification_notes_from_analysis = response[analysis_match.end():rec_match.start()].strip()
+
+    json_text = ""
+    if rec_match:
+        json_text = response[rec_match.end():].strip()
+    else:
+        json_text = response.strip()
+
+    text = _extract_clean_text(json_text) if json_text else ""
+    block = _extract_balanced(text, "{", "}")
+    if block:
+        text = block
+
+    try:
+        data = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        try:
+            text = _repair_truncated_json(text)
+            data = json.loads(text)
+        except (json.JSONDecodeError, ValueError):
+            return SongRecognition(
+                confidence="none",
+                verification_notes="Failed to parse recognition response",
+            )
+
+    if not isinstance(data, dict):
+        return SongRecognition(confidence="none")
+
+    confidence = str(data.get("confidence", "none")).lower()
+    if confidence not in ("high", "medium", "low", "none"):
+        confidence = "none"
+
+    return SongRecognition(
+        song_name=str(data.get("song_name", "")),
+        detected_key=str(data.get("detected_key", "")),
+        melody_description=str(data.get("melody_description", "")),
+        confidence=confidence,
+        verification_notes=str(data.get("verification_notes", verification_notes_from_analysis or "")),
+    )
+
+
+def build_melody_knowledge_block(recognition: SongRecognition) -> str:
+    """Format a SongRecognition into a text block for injection into Phase 2 prompts."""
+    if not recognition.song_name or recognition.confidence in ("none", ""):
+        return ""
+
+    templates = _load_templates()
+    template = templates.get("melody_knowledge_block", "")
+    if not template:
+        return ""
+
+    return template.format_map({
+        "song_name": recognition.song_name,
+        "detected_key": recognition.detected_key or "unknown",
+        "confidence": recognition.confidence,
+        "melody_description": recognition.melody_description or "(not available)",
+        "verification_notes": recognition.verification_notes or "(not available)",
+    })
 
 
 # ── Shared utilities ────────────────────────────────────────
@@ -1859,6 +2033,8 @@ def _ai_arrange_extract(
     on_chunk: StreamCallback | None = None,
     should_cancel: CancelCallback | None = None,
     cancel_state: CancellableState | None = None,
+    melody_knowledge: str = "",
+    recognition: SongRecognition | None = None,
 ) -> AiArrangeResult:
     """Run extract mode: classify notes as melody/accompaniment/bass."""
     raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
@@ -1879,6 +2055,7 @@ def _ai_arrange_extract(
         filename=midi_filename,
         meta=meta,
         key_analysis=key_analysis,
+        melody_knowledge=melody_knowledge,
     )
     _raise_if_cancelled(should_cancel)
 
@@ -1911,6 +2088,7 @@ def _ai_arrange_extract(
                 key_analysis=key_analysis,
                 continuation_context=continuation_ctx,
                 initial_previous_melody=carry_melody,
+                melody_knowledge=melody_knowledge if ci == 0 else "",
             )
             if ci == 0 and not prompt:
                 prompt = chunk_prompt
@@ -1971,7 +2149,60 @@ def _ai_arrange_extract(
         analysis_text=analysis_text,
         prompt=prompt,
         total_notes=len(raw_events),
+        recognition=recognition,
     )
+
+
+def _run_recognition_phase(
+    midi_path: Path,
+    raw_events: list[RawMidiEvent],
+    meta: MidiMeta | None,
+    key_analysis: MidiKeyAnalysis | None,
+    api_key: str,
+    base_url: str | None,
+    model: str,
+    user_song_name: str,
+    on_chunk: StreamCallback | None,
+    should_cancel: CancelCallback | None,
+    cancel_state: CancellableState | None,
+) -> tuple[SongRecognition | None, str]:
+    """Execute Phase 1 song recognition. Returns (recognition, melody_knowledge_block)."""
+    _emit_progress(on_chunk, "[Stage song_recognition]")
+    _raise_if_cancelled(should_cancel)
+
+    rec_prompt = build_recognition_prompt(
+        raw_events,
+        filename=midi_path.stem,
+        meta=meta,
+        key_analysis=key_analysis,
+        user_song_name=user_song_name,
+    )
+
+    try:
+        rec_raw = call_openai(
+            api_key, rec_prompt, base_url=base_url, model=model,
+            on_chunk=on_chunk, max_tokens=4096,
+            should_cancel=should_cancel, cancel_state=cancel_state,
+        )
+    except AiArrangeCancelled:
+        raise
+    except Exception as exc:
+        logger.warning("Song recognition phase failed: %s", _describe_exception(exc))
+        return None, ""
+
+    recognition = parse_recognition_response(rec_raw)
+    melody_knowledge = build_melody_knowledge_block(recognition)
+
+    if recognition.confidence in ("high", "medium"):
+        _emit_progress(
+            on_chunk,
+            f"[Song recognized: {recognition.song_name} "
+            f"(confidence: {recognition.confidence})]",
+        )
+    else:
+        _emit_progress(on_chunk, "[Song not recognized, using standard arrangement]")
+
+    return recognition, melody_knowledge
 
 
 def ai_arrange(
@@ -1990,14 +2221,34 @@ def ai_arrange(
     on_chunk: StreamCallback | None = None,
     should_cancel: CancelCallback | None = None,
     cancel_state: CancellableState | None = None,
+    melody_aware: bool = False,
+    user_song_name: str = "",
 ) -> AiArrangeResult:
     _raise_if_cancelled(should_cancel)
+
+    recognition: SongRecognition | None = None
+    melody_knowledge = ""
+
+    if melody_aware:
+        _pre_events, _, _ = read_midi_events(midi_path, tracks=tracks)
+        _pre_meta = read_midi_meta(midi_path, tracks=tracks)
+        _pre_key = analyze_midi_key(midi_path, tracks=tracks)
+        _raise_if_cancelled(should_cancel)
+
+        recognition, melody_knowledge = _run_recognition_phase(
+            midi_path, _pre_events, _pre_meta, _pre_key,
+            api_key, base_url, model, user_song_name,
+            on_chunk, should_cancel, cancel_state,
+        )
+        _raise_if_cancelled(should_cancel)
 
     if mode == "extract":
         return _ai_arrange_extract(
             midi_path, tracks=tracks, api_key=api_key, base_url=base_url,
             model=model, on_chunk=on_chunk, should_cancel=should_cancel,
             cancel_state=cancel_state,
+            melody_knowledge=melody_knowledge,
+            recognition=recognition,
         )
 
     available = get_available_notes(mapping, profile_id)
@@ -2079,6 +2330,7 @@ def ai_arrange(
                 key_analysis=key_analysis,
                 optimal_hint=optimal_hint,
                 simplify=simplify,
+                melody_knowledge=melody_knowledge,
             )
             estimated = _estimate_tokens(prompt)
             _raise_if_cancelled(should_cancel)
@@ -2120,6 +2372,7 @@ def ai_arrange(
                     simplify=simplify,
                     continuation_context=continuation_ctx,
                     initial_previous_melody=carry_melody,
+                    melody_knowledge=melody_knowledge if ci == 0 else "",
                 )
                 if ci == 0 and not prompt:
                     prompt = chunk_prompt
@@ -2188,6 +2441,7 @@ def ai_arrange(
             prompt=prompt,
             unmapped_count=len(unmapped_unique),
             total_notes=len(raw_events),
+            recognition=recognition,
         )
 
     prompt = build_remap_prompt(
@@ -2200,6 +2454,7 @@ def ai_arrange(
         key_analysis=key_analysis,
         optimal_hint=optimal_hint,
         simplify=simplify,
+        melody_knowledge=melody_knowledge,
     )
     _raise_if_cancelled(should_cancel)
     raw = call_openai(
@@ -2228,4 +2483,5 @@ def ai_arrange(
         prompt=prompt,
         unmapped_count=len(unmapped_unique),
         total_notes=len(raw_events),
+        recognition=recognition,
     )

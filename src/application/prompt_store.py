@@ -170,6 +170,51 @@ You MAY use -1 to DROP notes with artistic freedom, but:
 - For notes far outside the range, prefer octave-folding over dropping when the note provides rhythmic structure (bass lines, chord roots)
 - Simplify dense chords to root + melody note only
 - Prioritize overall musicality and emotional impact over note-for-note fidelity""",
+
+    "recognition_template": """\
+You are a professional music analyst with encyclopedic knowledge of songs across all genres and cultures.
+{meta_block}
+{user_song_hint}
+Below are the first bars of a MIDI file, grouped by simultaneous notes and organized by bar.
+Each note shows its MIDI number, note name, duration, and velocity.
+
+{sequence_text}
+
+Your task:
+1. IDENTIFY the song — use the filename, any user-provided song name, and the musical features (melody contour, key, rhythm, tempo) to determine what piece this is.
+2. RECALL the main melody of this song in its original key. Describe the melody using solfege syllables (do, re, mi…) or note names (C, D, E…), including the key and approximate rhythm.
+3. VERIFY — compare your recalled melody against the MIDI data above. Note which bars match and which diverge.
+4. Return your analysis and a structured JSON result.
+
+Your response MUST have exactly two sections with these headers:
+
+## Analysis
+用中文简要说明：
+- 你识别出的曲名及依据
+- 该曲原调及主旋律走向（用唱名或音名描述前8-16小节的旋律）
+- 与 MIDI 数据的吻合程度（哪些小节吻合、哪些有差异）
+- 你对主旋律编曲的建议
+
+## Recognition
+A JSON object with these fields:
+{{"song_name": "...", "detected_key": "...", "melody_description": "Describe the main melody pitch sequence in the original key, e.g. 'C D E F G A G F E D C, rhythm: quarter-quarter-eighth-eighth-half...'", "confidence": "high|medium|low|none", "verification_notes": "Brief note on how well the MIDI matches the recalled melody"}}
+
+Nothing else after the JSON.""",
+
+    "melody_knowledge_block": """\
+=== MELODY-AWARE ARRANGEMENT ===
+This piece has been identified as: {song_name} (Key: {detected_key}, Confidence: {confidence})
+
+Recalled main melody: {melody_description}
+
+Verification: {verification_notes}
+
+IMPORTANT — Use your knowledge of this song to guide the arrangement:
+1. PRESERVE RECOGNIZABILITY — the main melody must remain clearly recognizable to someone who knows this song.
+2. MELODY PRIORITY — when an unmapped note is part of the main melody, choose a replacement that preserves the melodic contour and interval relationships of the original. A slightly less accurate pitch is far better than breaking the melody line.
+3. SIGNATURE PHRASES — identify the most iconic/memorable phrases of this song and protect them with the highest fidelity.
+4. HARMONIC CONTEXT — use your knowledge of the song's chord progressions to choose harmonically appropriate replacements for accompaniment notes.
+5. EMOTIONAL ARC — preserve the song's emotional arc (tension-release, climax, resolution) through your arrangement choices.""",
 }
 
 TEMPLATE_KEYS = list(DEFAULT_TEMPLATES.keys())
