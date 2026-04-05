@@ -345,6 +345,103 @@ def validate_note_map(
     return fixed, fix_count
 
 
+def _redistribute_convergent(
+    note_map: dict[int, int],
+    available_sorted: list[int],
+) -> tuple[dict[int, int], int]:
+    """Detect multiple originals converging on the same replacement and spread them.
+
+    When N different original notes (that are adjacent/close in pitch) all map
+    to the same replacement R, redistribute them across the N nearest available
+    notes around R, preserving the ascending/descending order of the originals.
+
+    Returns (fixed_map, redistribution_count).
+    """
+    if not note_map or len(available_sorted) < 2:
+        return note_map, 0
+
+    from collections import defaultdict
+    repl_to_originals: dict[int, list[int]] = defaultdict(list)
+    for orig, repl in note_map.items():
+        if repl == -1:
+            continue
+        repl_to_originals[repl].append(orig)
+
+    fixed = dict(note_map)
+    total_redistributed = 0
+
+    used_replacements = set(fixed.values()) - {-1}
+
+    for repl, originals in repl_to_originals.items():
+        if len(originals) < 2:
+            continue
+
+        originals_sorted = sorted(originals)
+
+        max_gap = max(
+            originals_sorted[i + 1] - originals_sorted[i]
+            for i in range(len(originals_sorted) - 1)
+        )
+        if max_gap > 12:
+            continue
+
+        n = len(originals_sorted)
+        repl_idx = -1
+        for i, note in enumerate(available_sorted):
+            if note == repl:
+                repl_idx = i
+                break
+        if repl_idx < 0:
+            continue
+
+        ascending = originals_sorted[-1] >= originals_sorted[0]
+
+        candidates: list[int] = []
+        left = repl_idx - 1
+        right = repl_idx + 1
+        candidates.append(repl)
+
+        while len(candidates) < n:
+            pick_left = left >= 0
+            pick_right = right < len(available_sorted)
+            if not pick_left and not pick_right:
+                break
+            if pick_right and (not pick_left or (available_sorted[right] - repl) <= (repl - available_sorted[left])):
+                candidates.append(available_sorted[right])
+                right += 1
+            elif pick_left:
+                candidates.append(available_sorted[left])
+                left -= 1
+
+        candidates.sort()
+
+        if len(candidates) < n:
+            continue
+
+        if len(candidates) > n:
+            center_idx = candidates.index(repl)
+            half = n // 2
+            start = max(0, center_idx - half)
+            end = start + n
+            if end > len(candidates):
+                end = len(candidates)
+                start = end - n
+            candidates = candidates[start:end]
+
+        if ascending:
+            for orig, cand in zip(originals_sorted, candidates):
+                if fixed[orig] != cand:
+                    fixed[orig] = cand
+                    total_redistributed += 1
+        else:
+            for orig, cand in zip(originals_sorted, reversed(candidates)):
+                if fixed[orig] != cand:
+                    fixed[orig] = cand
+                    total_redistributed += 1
+
+    return fixed, total_redistributed
+
+
 def validate_position_map(
     position_map: list[PositionRemap],
     available_set: set[int],
@@ -1132,6 +1229,57 @@ def _enforce_context_rules(
             previous_melody_original = melody_original
             previous_melody_replacement = melody_replacement
 
+        convergent_groups: dict[int, list[int]] = {}
+        for note_val, repl_val in effective.items():
+            if repl_val != -1 and (group.time_ms, note_val) in replacements:
+                convergent_groups.setdefault(repl_val, []).append(note_val)
+
+        for conv_repl, conv_originals in convergent_groups.items():
+            if len(conv_originals) < 2:
+                continue
+            conv_originals_sorted = sorted(conv_originals)
+            repl_idx = -1
+            for idx_i, av_note in enumerate(available_sorted):
+                if av_note == conv_repl:
+                    repl_idx = idx_i
+                    break
+            if repl_idx < 0:
+                continue
+            other_used = {
+                r for o, r in effective.items()
+                if o not in conv_originals and r != -1
+            }
+            cands: list[int] = []
+            left_i = repl_idx
+            right_i = repl_idx + 1
+            while len(cands) < len(conv_originals):
+                pick_l = left_i >= 0
+                pick_r = right_i < len(available_sorted)
+                if not pick_l and not pick_r:
+                    break
+                if pick_l and available_sorted[left_i] not in other_used:
+                    cands.append(available_sorted[left_i])
+                    left_i -= 1
+                elif pick_l:
+                    left_i -= 1
+                    continue
+                if len(cands) >= len(conv_originals):
+                    break
+                if pick_r and available_sorted[right_i] not in other_used:
+                    cands.append(available_sorted[right_i])
+                    right_i += 1
+                elif pick_r:
+                    right_i += 1
+            cands.sort()
+            if len(cands) >= len(conv_originals):
+                cands = cands[:len(conv_originals)]
+                for orig_v, cand_v in zip(conv_originals_sorted, cands):
+                    conv_key = (group.time_ms, orig_v)
+                    if conv_key in replacements and effective[orig_v] != cand_v:
+                        replacements[conv_key] = cand_v
+                        effective[orig_v] = cand_v
+                        adjustments += 1
+
         for note in sorted(group.notes, key=lambda item: (item.final_note == melody_original, item.final_note)):
             key = (group.time_ms, note.final_note)
             replacement = effective.get(note.final_note)
@@ -1344,6 +1492,10 @@ def ai_arrange(
     note_map, fix_count = validate_note_map(note_map, available_set, available)
     if fix_count and analysis_text:
         analysis_text += f"\n[Auto-corrected {fix_count} invalid replacement(s) to nearest available note]"
+
+    note_map, redist_count = _redistribute_convergent(note_map, available)
+    if redist_count and analysis_text:
+        analysis_text += f"\n[Redistributed {redist_count} convergent mapping(s) to preserve melodic contour]"
 
     return AiArrangeResult(
         note_map=note_map,

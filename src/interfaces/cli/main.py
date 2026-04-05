@@ -65,7 +65,7 @@ def convert_command(
     )
 
     try:
-        chart, warnings = convert_midi_to_chart(midi, mapping_config, options)
+        chart, warnings, denoise_report = convert_midi_to_chart(midi, mapping_config, options)
     except MappingError as exc:
         console.print(f"[red]convert failed:[/red] {exc}")
         raise typer.Exit(1) from exc
@@ -73,6 +73,16 @@ def convert_command(
     save_chart(output, chart)
     console.print(f"[green]chart saved:[/green] {output}")
     console.print(f"[cyan]events:[/cyan] {len(chart.events)}")
+    if denoise_report and denoise_report.total_removed:
+        console.print(f"[cyan]denoise:[/cyan] removed {denoise_report.total_removed} events")
+        if denoise_report.dedup_removed:
+            console.print(f"  - dedup: {denoise_report.dedup_removed}")
+        if denoise_report.rate_limit_removed:
+            console.print(f"  - rate limit: {denoise_report.rate_limit_removed}")
+        if denoise_report.chord_repeat_removed:
+            console.print(f"  - chord repeat: {denoise_report.chord_repeat_removed}")
+        if denoise_report.simultaneous_removed:
+            console.print(f"  - simultaneous: {denoise_report.simultaneous_removed}")
     if warnings:
         console.print(f"[yellow]warnings:[/yellow] {len(warnings)}")
         for item in warnings[:20]:
@@ -164,7 +174,7 @@ def preview_track_game_command(
     )
 
     try:
-        chart, warnings = convert_midi_to_chart(midi, mapping_config, convert_options)
+        chart, warnings, _denoise_report = convert_midi_to_chart(midi, mapping_config, convert_options)
     except MappingError as exc:
         console.print(f"[red]preview-track-game convert failed:[/red] {exc}")
         raise typer.Exit(1) from exc

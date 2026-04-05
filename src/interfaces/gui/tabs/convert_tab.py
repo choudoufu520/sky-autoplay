@@ -30,10 +30,14 @@ from PySide6.QtWidgets import (
 
 from src.application.converter import (
     ConvertOptions,
+    DenoiseReport,
     MappingError,
+    chart_to_jianpu,
     chart_to_jianpu_pdf,
     chart_to_preview_midi,
+    compare_jianpu_pdf,
     convert_midi_to_chart,
+    midi_events_to_jianpu,
 )
 from src.infrastructure.midi_reader import MidiKeyAnalysis, analyze_midi_key, list_midi_tracks, read_midi_meta
 from src.infrastructure.repository import load_mapping, save_chart
@@ -128,6 +132,19 @@ class ConvertTab(QWidget):
         self.apply_suggest_btn.clicked.connect(self._apply_suggested_transpose)
         transpose_row.addWidget(self.apply_suggest_btn)
         self.form.addRow(self.transpose_label, transpose_row)
+
+        self.optimal_hint_label = QLabel()
+        self.optimal_hint_label.setWordWrap(True)
+        self.optimal_hint_label.setOpenExternalLinks(True)
+        self.optimal_hint_label.setObjectName("infoLabel")
+        optimal_row = QHBoxLayout()
+        optimal_row.addWidget(self.optimal_hint_label, 1)
+        self.optimal_apply_btn = QPushButton()
+        self.optimal_apply_btn.setFixedWidth(60)
+        self.optimal_apply_btn.setVisible(False)
+        self.optimal_apply_btn.clicked.connect(self._apply_optimal_settings)
+        optimal_row.addWidget(self.optimal_apply_btn)
+        self.form.addRow("", optimal_row)
 
         self.octave_label = QLabel()
         self.octave_spin = QSpinBox()
@@ -362,6 +379,11 @@ class ConvertTab(QWidget):
         self.export_jianpu_btn.setEnabled(False)
         self.export_jianpu_btn.clicked.connect(self._export_jianpu)
         convert_row.addWidget(self.export_jianpu_btn)
+
+        self.compare_jianpu_btn = QPushButton()
+        self.compare_jianpu_btn.setEnabled(False)
+        self.compare_jianpu_btn.clicked.connect(self._compare_jianpu)
+        convert_row.addWidget(self.compare_jianpu_btn)
         layout.addLayout(convert_row)
 
         self.result_text = QPlainTextEdit()
@@ -372,6 +394,7 @@ class ConvertTab(QWidget):
         self._suggested_transpose: int = 0
         self._midi_path: str = ""
         self._last_chart: object | None = None
+        self._last_denoise_report: DenoiseReport | None = None
         self._ai_note_map: dict[int, int] | None = None
         self._ai_position_map: dict[tuple[int, int], int] | None = None
         self._ai_worker = None
@@ -439,10 +462,12 @@ class ConvertTab(QWidget):
         self.denoise_max_sim_spin.setToolTip(tr("convert.denoise_max_sim_tip"))
         self.denoise_max_repeat_label.setText(tr("convert.denoise_max_repeat"))
         self.denoise_max_repeat_spin.setToolTip(tr("convert.denoise_max_repeat_tip"))
+        self.optimal_apply_btn.setText(tr("convert.ai_key_apply"))
         self.preview_midi_check.setText(tr("convert.preview_midi"))
         self.convert_btn.setText(tr("convert.btn"))
         self.listen_btn.setText(tr("convert.listen"))
         self.export_jianpu_btn.setText(tr("convert.export_jianpu"))
+        self.compare_jianpu_btn.setText(tr("convert.compare_jianpu"))
 
         self.transpose_spin.setToolTip(tr("convert.tip_transpose"))
         self.octave_spin.setToolTip(tr("convert.tip_octave"))
@@ -656,7 +681,9 @@ class ConvertTab(QWidget):
 
         self._optimal_worker = None
         if not isinstance(results, list) or not results:
+            self.optimal_hint_label.clear()
             self.ai_optimal_label.clear()
+            self.optimal_apply_btn.setVisible(False)
             self.ai_optimal_apply_btn.setVisible(False)
             self._optimal_setting = None
             return
@@ -675,24 +702,28 @@ class ConvertTab(QWidget):
             current_count = current.unmapped_count
 
         if best.transpose == cur_transpose and best.octave == cur_octave:
+            self.optimal_hint_label.setText(tr("convert.ai_key_optimal"))
             self.ai_optimal_label.setText(tr("convert.ai_key_optimal"))
+            self.optimal_apply_btn.setVisible(False)
             self.ai_optimal_apply_btn.setVisible(False)
             self._optimal_setting = None
             return
 
         instr_short = best.instruments[0].split("/")[0] if best.instruments else ""
         self._optimal_setting = best
-        self.ai_optimal_label.setText(
-            tr("convert.ai_key_hint").format(
-                current_count=current_count,
-                val=f"{best.transpose:+d}",
-                octave=f"{best.octave:+d}",
-                key=best.key_name,
-                instrument=instr_short,
-                best_count=best.unmapped_count,
-                wiki=MUSIC_KEY_WIKI,
-            )
+        hint_text = tr("convert.ai_key_hint").format(
+            current_count=current_count,
+            val=f"{best.transpose:+d}",
+            octave=f"{best.octave:+d}",
+            key=best.key_name,
+            instrument=instr_short,
+            best_count=best.unmapped_count,
+            wiki=MUSIC_KEY_WIKI,
         )
+        self.optimal_hint_label.setText(hint_text)
+        self.optimal_apply_btn.setVisible(True)
+        self.optimal_apply_btn.setText(tr("convert.ai_key_apply"))
+        self.ai_optimal_label.setText(hint_text)
         self.ai_optimal_apply_btn.setVisible(self.ai_group.isChecked())
 
     def _apply_optimal_settings(self) -> None:
@@ -1177,7 +1208,7 @@ class ConvertTab(QWidget):
         )
 
         try:
-            chart, _warnings = convert_midi_to_chart(Path(midi_path), mapping_config, options)
+            chart, _warnings, _report = convert_midi_to_chart(Path(midi_path), mapping_config, options)
             tmp = tempfile.NamedTemporaryFile(suffix=".mid", delete=False)
             tmp.close()
             preview_path = Path(tmp.name)
@@ -1277,6 +1308,60 @@ class ConvertTab(QWidget):
         except Exception as exc:
             self.result_text.appendPlainText(f"Export error: {exc}")
 
+    def _compare_jianpu(self) -> None:
+        import os
+
+        from src.domain.chart import ChartDocument
+
+        chart = self._last_chart
+        if not isinstance(chart, ChartDocument):
+            return
+
+        midi_path = self._midi_path or self.midi_edit.text().strip()
+        mapping_path = self.mapping_edit.text().strip()
+        if not midi_path or not mapping_path:
+            return
+
+        try:
+            mapping_config = load_mapping(Path(mapping_path))
+        except Exception:
+            return
+
+        bpm = 120.0
+        time_sig = "4/4"
+        tracks = self._get_selected_tracks()
+        if midi_path and Path(midi_path).exists():
+            try:
+                meta = read_midi_meta(Path(midi_path), tracks=tracks)
+                bpm = meta.bpm
+                time_sig = meta.time_signature
+            except Exception:
+                pass
+
+        title = Path(midi_path).stem if midi_path else ""
+        default_name = f"{title}_compare.pdf" if title else "compare.pdf"
+
+        save_path, _ = QFileDialog.getSaveFileName(
+            self, tr("convert.dialog_compare_pdf"), default_name, "PDF (*.pdf)",
+        )
+        if not save_path:
+            return
+
+        try:
+            from src.infrastructure.midi_reader import read_midi_events
+
+            raw_events, _, _ = read_midi_events(Path(midi_path), tracks=tracks)
+            compare_jianpu_pdf(
+                chart, mapping_config, raw_events, Path(save_path),
+                bpm=bpm, time_signature=time_sig, title=title,
+            )
+            self.result_text.appendPlainText(
+                tr("convert.compare_pdf_saved").format(path=save_path),
+            )
+            os.startfile(str(save_path))  # type: ignore[attr-defined]
+        except Exception as exc:
+            self.result_text.appendPlainText(f"Compare PDF error: {exc}")
+
     def _listen_preview(self) -> None:
         import os
 
@@ -1318,7 +1403,7 @@ class ConvertTab(QWidget):
         )
 
         try:
-            chart, warnings = convert_midi_to_chart(Path(midi_path), mapping_config, options)
+            chart, warnings, denoise_report = convert_midi_to_chart(Path(midi_path), mapping_config, options)
         except MappingError as exc:
             self.result_text.setPlainText(tr("convert.err_map").format(err=exc))
             return
@@ -1333,7 +1418,9 @@ class ConvertTab(QWidget):
             output_path = str(out.with_stem(out.stem + "_ai-remap"))
         save_chart(Path(output_path), chart)
         self._last_chart = chart
+        self._last_denoise_report = denoise_report
         self.export_jianpu_btn.setEnabled(True)
+        self.compare_jianpu_btn.setEnabled(True)
 
         lines = [
             tr("convert.saved").format(path=output_path),
@@ -1343,6 +1430,17 @@ class ConvertTab(QWidget):
             lines.append(tr("convert.ai_applied_context").format(count=len(self._ai_position_map)))
         elif self._ai_note_map:
             lines.append(tr("convert.ai_applied").format(count=len(self._ai_note_map)))
+
+        if denoise_report and denoise_report.total_removed:
+            lines.append(tr("convert.denoise_report_title").format(total=denoise_report.total_removed))
+            if denoise_report.dedup_removed:
+                lines.append(tr("convert.denoise_dedup").format(count=denoise_report.dedup_removed))
+            if denoise_report.rate_limit_removed:
+                lines.append(tr("convert.denoise_rate_limit").format(count=denoise_report.rate_limit_removed))
+            if denoise_report.chord_repeat_removed:
+                lines.append(tr("convert.denoise_chord_repeat").format(count=denoise_report.chord_repeat_removed))
+            if denoise_report.simultaneous_removed:
+                lines.append(tr("convert.denoise_simultaneous").format(count=denoise_report.simultaneous_removed))
 
         self._preview_midi_path = None
         self.listen_btn.setEnabled(False)

@@ -21,9 +21,9 @@ For each unmapped note, suggest which available note should replace it.
 
 === REPLACEMENT PRINCIPLES ===
 1. CLOSEST PITCH — replacement must be as close to the original as possible. Prefer the nearest available note (up or down).
-2. PRESERVE DIRECTION — if the note is above the instrument range, map to the highest available note. If below, map to the lowest.
+2. RANGE COMPRESSION — when multiple unmapped notes cluster above (or below) the instrument range, do NOT clamp them all to the same boundary note. Distribute them proportionally across the top (or bottom) of the available range to preserve their relative intervals. Example: unmapped 85,86,88 with max available 84 -> map to 81,83,84 (ascending contour preserved).
 3. SHARPS/FLATS — for accidentals (C#, Eb), prefer the adjacent natural note that fits the musical context (half-step toward the key center).
-4. PRESERVE EMOTION — high notes carry tension/brightness; do NOT fold them down. Low notes carry depth; do NOT fold them up. Keep the emotional register.
+4. PRESERVE EMOTION — high notes carry tension/brightness; do NOT fold them down. Low notes carry depth; do NOT fold them up. Keep the emotional register. EXCEPTION: when multiple high notes all exceed the range, shift the entire group down proportionally to preserve the melodic contour — this preserves emotion far better than clamping them all to the same ceiling note.
 5. OCTAVE FOLDING — for notes far outside the range (more than 1 octave away), fold by +12 or -12 until they land near an available note, then pick the closest. A folded note is ALWAYS better than a dropped note because it preserves rhythm and pitch class.
 6. VOICE LEADING — if two unmapped notes are close in pitch (within 4 semitones), their replacements should also be close, preserving the relative spacing.
 
@@ -73,6 +73,7 @@ These carry the main tune the listener hears. Treat with highest care:
 3. PRESERVE INTERVALS — maintain the relative distance between consecutive melody notes. A 3rd should stay roughly a 3rd.
 4. NO CONSECUTIVE DUPLICATES — do not map two originally different consecutive melody notes to the same replacement (unless the original already repeated).
 5. INTERVAL LIMIT — the interval between two consecutive melody replacements should not deviate from the original interval by more than 3 semitones. Example: original melody goes up 4 semitones (M3), replacement should go up 1-7 semitones. Never invert the direction.
+6. RANGE COMPRESSION — when consecutive melody notes all exceed the instrument ceiling (or floor), do NOT map them all to the boundary note. Spread them proportionally into the top (or bottom) of the available range to preserve the ascending/descending contour. Three different notes must produce three different replacements.
 
 === ACCOMPANIMENT / CHORD NOTES ===
 These provide harmonic support. More flexibility allowed:
@@ -85,7 +86,8 @@ These provide harmonic support. More flexibility allowed:
 === GENERAL RULES ===
 1. SHARPS/FLATS — for accidentals (C#, Eb, etc.), prefer the adjacent natural note in the direction of the melody movement.
 2. OCTAVE FOLDING — for notes far outside the range (more than 1 octave away), fold by +12 or -12 until they land near an available note, then pick the closest. A folded note is ALWAYS better than a dropped note because it preserves rhythm and pitch class.
-3. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry warmth/depth. Do not systematically flatten the pitch range.
+3. PRESERVE EMOTION — high notes carry tension/brightness, low notes carry warmth/depth. Do not systematically flatten the pitch range. When a group of notes all exceed the ceiling, shift the entire group down proportionally rather than clamping to the same boundary.
+4. RANGE COMPRESSION — when multiple unmapped notes in the same group or consecutive groups cluster beyond the range, distribute them across distinct available notes. Never map two different originals to the same replacement within the same time window.
 
 === EXAMPLE (good vs. bad) ===
 Original melody: 67(G4) -> 69(A4) -> 73(C#5)   (intervals: up 2, up 4)

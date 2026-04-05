@@ -108,6 +108,16 @@ _T: dict[str, dict[str, str]] = {
         "convert.preview_midi_err": "Preview MIDI error: {err}",
         "convert.jianpu_saved": "Jianpu saved: {path}",
         "convert.dialog_jianpu": "Save Jianpu",
+        "convert.denoise_report_title": "Denoise: removed {total} events",
+        "convert.denoise_dedup": "  - Unison dedup: {count} (octave/unison collapse)",
+        "convert.denoise_rate_limit": "  - Rate limit: {count} (tremolo/pedal point)",
+        "convert.denoise_chord_repeat": "  - Chord repeat: {count} (repeating accompaniment)",
+        "convert.denoise_simultaneous": "  - Simultaneous: {count} (over max keys limit)",
+        "convert.compare_jianpu": "Compare Jianpu (PDF)",
+        "convert.compare_original": "Original MIDI",
+        "convert.compare_converted": "Converted Chart",
+        "convert.dialog_compare_pdf": "Save Comparison PDF",
+        "convert.compare_pdf_saved": "Comparison PDF saved: {path}",
 
         # ── AI Arrange ──
         "convert.ai_group": "AI Intelligent Arrangement",
@@ -420,6 +430,16 @@ _T: dict[str, dict[str, str]] = {
         "convert.preview_midi_err": "预览 MIDI 错误：{err}",
         "convert.jianpu_saved": "简谱已保存：{path}",
         "convert.dialog_jianpu": "保存简谱",
+        "convert.denoise_report_title": "降噪报告：共移除 {total} 个事件",
+        "convert.denoise_dedup": "  - 同时刻去重：{count} 个（齐奏/八度折叠）",
+        "convert.denoise_rate_limit": "  - 同键限频：{count} 个（震音/持续低音）",
+        "convert.denoise_chord_repeat": "  - 和弦重复精简：{count} 个（重复伴奏型）",
+        "convert.denoise_simultaneous": "  - 同时按键精简：{count} 个（超过上限）",
+        "convert.compare_jianpu": "对比简谱 (PDF)",
+        "convert.compare_original": "原曲",
+        "convert.compare_converted": "转换后",
+        "convert.dialog_compare_pdf": "保存对比简谱 PDF",
+        "convert.compare_pdf_saved": "对比简谱已保存：{path}",
 
         # ── AI 编曲 ──
         "convert.ai_group": "AI 智能编曲",

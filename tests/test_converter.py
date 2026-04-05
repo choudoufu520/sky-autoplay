@@ -9,11 +9,15 @@ from src.application.converter import (
     _snap_to_nearest,
     build_position_index,
     ConvertOptions,
+    DenoiseReport,
     _fuzzy_position_lookup,
     convert_midi_to_chart,
     denoise_chart,
+    midi_events_to_jianpu,
 )
+from src.application.ai_arranger import _redistribute_convergent
 from src.domain.chart import ChartDocument, ChartEvent, ChartMetadata
+from src.infrastructure.midi_reader import RawMidiEvent
 from src.domain.mapping import MappingConfig, MappingProfile
 
 
@@ -221,7 +225,7 @@ class TestConvertMidiToChart:
             ai_position_map={(0, 61): 60},
         )
 
-        chart, warnings = convert_midi_to_chart(midi_path, mapping, options)
+        chart, warnings, _report = convert_midi_to_chart(midi_path, mapping, options)
 
         assert len(chart.events) == 1
         assert chart.events[0].key == "y"
@@ -241,27 +245,27 @@ class TestDenoiseDeduplicateSimultaneous:
 
     def test_removes_exact_duplicate(self):
         chart = _chart(_tap(0, "y"), _tap(0, "y"))
-        result, removed = denoise_chart(chart)
+        result, report = denoise_chart(chart)
         assert len(result.events) == 1
-        assert removed == 1
+        assert report.total_removed == 1
 
     def test_removes_near_duplicate_within_window(self):
         chart = _chart(_tap(0, "y"), _tap(20, "y"))
-        result, removed = denoise_chart(chart, dedup_window_ms=30)
+        result, report = denoise_chart(chart, dedup_window_ms=30)
         assert len(result.events) == 1
-        assert removed == 1
+        assert report.total_removed == 1
 
     def test_keeps_different_keys_at_same_time(self):
         chart = _chart(_tap(0, "y"), _tap(0, "u"))
-        result, removed = denoise_chart(chart)
+        result, report = denoise_chart(chart)
         assert len(result.events) == 2
-        assert removed == 0
+        assert report.total_removed == 0
 
     def test_keeps_same_key_beyond_window(self):
         chart = _chart(_tap(0, "y"), _tap(100, "y"))
-        result, removed = denoise_chart(chart, dedup_window_ms=30)
+        result, report = denoise_chart(chart, dedup_window_ms=30)
         assert len(result.events) == 2
-        assert removed == 0
+        assert report.total_removed == 0
 
 
 class TestDenoiseKeyRepeatRate:
@@ -270,18 +274,18 @@ class TestDenoiseKeyRepeatRate:
     def test_trims_single_key_burst(self):
         events = [_tap(i * 50, "y") for i in range(8)]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
+        result, report = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
         keys = [e.key for e in result.events]
         assert all(k == "y" for k in keys)
         assert len(keys) == 3
-        assert removed == 5
+        assert report.total_removed == 5
 
     def test_keeps_short_burst(self):
         events = [_tap(i * 50, "y") for i in range(3)]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
+        result, report = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
         assert len(result.events) == 3
-        assert removed == 0
+        assert report.total_removed == 0
 
     def test_tracks_keys_independently_through_chords(self):
         """The key improvement: detects per-key repetition even when
@@ -291,11 +295,11 @@ class TestDenoiseKeyRepeatRate:
             events.append(_tap(i * 100, "y"))
             events.append(_tap(i * 100, "u"))
         chart = _chart(*events)
-        result, removed = denoise_chart(
+        result, report = denoise_chart(
             chart, dedup_window_ms=0, max_key_per_burst=3,
             max_chord_repeats=99, max_simultaneous=99,
         )
-        assert removed > 0
+        assert report.total_removed > 0
         y_count = sum(1 for e in result.events if e.key == "y")
         u_count = sum(1 for e in result.events if e.key == "u")
         assert y_count <= 3
@@ -304,7 +308,7 @@ class TestDenoiseKeyRepeatRate:
     def test_preserves_first_and_last(self):
         events = [_tap(i * 50, "y") for i in range(10)]
         chart = _chart(*events)
-        result, _ = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
+        result, _report = denoise_chart(chart, dedup_window_ms=0, max_key_per_burst=3)
         y_events = [e for e in result.events if e.key == "y"]
         assert y_events[0].time_ms == 0
         assert y_events[-1].time_ms == 450
@@ -314,11 +318,11 @@ class TestDenoiseKeyRepeatRate:
         burst1 = [_tap(i * 50, "y") for i in range(3)]
         burst2 = [_tap(2000 + i * 50, "y") for i in range(3)]
         chart = _chart(*(burst1 + burst2))
-        result, removed = denoise_chart(
+        result, report = denoise_chart(
             chart, dedup_window_ms=0, max_key_per_burst=3, burst_gap_ms=500,
         )
         assert len(result.events) == 6
-        assert removed == 0
+        assert report.total_removed == 0
 
 
 class TestDenoiseRepeatingChord:
@@ -331,11 +335,11 @@ class TestDenoiseRepeatingChord:
             events.append(_tap(i * 250, "y"))
             events.append(_tap(i * 250, "u"))
         chart = _chart(*events)
-        result, removed = denoise_chart(
+        result, report = denoise_chart(
             chart, dedup_window_ms=0, max_key_per_burst=99,
             max_chord_repeats=3, max_simultaneous=99,
         )
-        assert removed > 0
+        assert report.total_removed > 0
         slots = set()
         for e in result.events:
             slots.add(e.time_ms)
@@ -349,11 +353,11 @@ class TestDenoiseRepeatingChord:
             _tap(500, "y"), _tap(500, "o"),
         ]
         chart = _chart(*events)
-        result, removed = denoise_chart(
+        result, report = denoise_chart(
             chart, dedup_window_ms=0, max_key_per_burst=99,
             max_chord_repeats=2, max_simultaneous=99,
         )
-        assert removed == 0
+        assert report.total_removed == 0
 
     def test_realistic_accompaniment_pattern(self):
         """Simulates measure 45 from the screenshot: same chord 8x per bar."""
@@ -362,8 +366,8 @@ class TestDenoiseRepeatingChord:
             events.append(_tap(i * 250, "6", duration_ms=200))
             events.append(_tap(i * 250, "3", duration_ms=200))
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0)
-        assert removed >= 8
+        result, report = denoise_chart(chart, dedup_window_ms=0)
+        assert report.total_removed >= 8
         total = len(result.events)
         assert total <= 8
 
@@ -380,9 +384,9 @@ class TestDenoiseThinSimultaneous:
             _tap(0, "p", duration_ms=150),
         ]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, dedup_window_ms=0, max_simultaneous=3)
+        result, report = denoise_chart(chart, dedup_window_ms=0, max_simultaneous=3)
         assert len(result.events) == 3
-        assert removed == 2
+        assert report.total_removed == 2
         kept_keys = {e.key for e in result.events}
         assert "i" in kept_keys
         assert "y" in kept_keys
@@ -390,15 +394,15 @@ class TestDenoiseThinSimultaneous:
     def test_keeps_within_limit(self):
         events = [_tap(0, "y"), _tap(0, "u"), _tap(0, "i")]
         chart = _chart(*events)
-        result, removed = denoise_chart(chart, max_simultaneous=4)
+        result, report = denoise_chart(chart, max_simultaneous=4)
         assert len(result.events) == 3
-        assert removed == 0
+        assert report.total_removed == 0
 
     def test_preserves_hold_events(self):
         hold_down = ChartEvent(time_ms=0, key="y", action="down")
         hold_up = ChartEvent(time_ms=100, key="y", action="up")
         chart = _chart(hold_down, hold_up, _tap(0, "y"))
-        result, removed = denoise_chart(chart)
+        result, report = denoise_chart(chart)
         actions = [e.action for e in result.events]
         assert "down" in actions
         assert "up" in actions
@@ -414,18 +418,18 @@ class TestDenoiseIntegration:
             _tap(0, "o"), _tap(0, "p"),
         ]
         chart = _chart(*events)
-        result, removed = denoise_chart(
+        result, report = denoise_chart(
             chart, dedup_window_ms=30, max_simultaneous=3,
         )
-        assert removed > 0
+        assert report.total_removed > 0
         keys_at_0 = [e.key for e in result.events if e.time_ms <= 30]
         assert len(set(keys_at_0)) <= 3
 
     def test_empty_chart(self):
         chart = _chart()
-        result, removed = denoise_chart(chart)
+        result, report = denoise_chart(chart)
         assert len(result.events) == 0
-        assert removed == 0
+        assert report.total_removed == 0
 
     def test_full_pipeline_realistic(self):
         """Simulates a bar with dense repeating chords + unison duplicates."""
@@ -436,6 +440,129 @@ class TestDenoiseIntegration:
             events.append(_tap(t, "3", duration_ms=200))
             events.append(_tap(t, "6", duration_ms=100))  # unison dup
         chart = _chart(*events)
-        result, removed = denoise_chart(chart)
-        assert removed >= 10
+        result, report = denoise_chart(chart)
+        assert report.total_removed >= 10
         assert len(result.events) <= 8
+
+    def test_report_categories(self):
+        """Verify DenoiseReport tracks per-category counts."""
+        events = [
+            _tap(0, "y"), _tap(0, "y"),
+            _tap(0, "u"), _tap(0, "i"), _tap(0, "o"), _tap(0, "p"),
+        ]
+        chart = _chart(*events)
+        _result, report = denoise_chart(chart, dedup_window_ms=30, max_simultaneous=3)
+        assert isinstance(report, DenoiseReport)
+        assert report.dedup_removed >= 1
+        assert report.total_removed == (
+            report.dedup_removed + report.rate_limit_removed
+            + report.chord_repeat_removed + report.simultaneous_removed
+        )
+
+
+class TestRedistributeConvergent:
+    """Tests for _redistribute_convergent in ai_arranger.py."""
+
+    def test_no_convergence(self):
+        note_map = {85: 84, 86: 83, 88: 81}
+        available = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84]
+        fixed, count = _redistribute_convergent(note_map, available)
+        assert count == 0
+        assert fixed == note_map
+
+    def test_spreads_convergent_notes(self):
+        """Three adjacent notes all mapped to 84 should be spread out."""
+        note_map = {85: 84, 86: 84, 88: 84}
+        available = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84]
+        fixed, count = _redistribute_convergent(note_map, available)
+        assert count > 0
+        replacements = [fixed[85], fixed[86], fixed[88]]
+        assert len(set(replacements)) == 3
+        assert replacements == sorted(replacements)
+
+    def test_preserves_ascending_order(self):
+        note_map = {90: 84, 91: 84, 92: 84}
+        available = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84]
+        fixed, _count = _redistribute_convergent(note_map, available)
+        assert fixed[90] <= fixed[91] <= fixed[92]
+
+    def test_skips_drops(self):
+        note_map = {85: 84, 86: -1, 88: 84}
+        available = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84]
+        fixed, count = _redistribute_convergent(note_map, available)
+        assert fixed[86] == -1
+        assert count > 0
+        assert fixed[85] != fixed[88]
+
+    def test_empty_map(self):
+        fixed, count = _redistribute_convergent({}, [60, 62, 64])
+        assert count == 0
+        assert fixed == {}
+
+    def test_skips_distant_originals(self):
+        """Notes more than an octave apart should not be redistributed."""
+        note_map = {40: 60, 55: 60}
+        available = [60, 62, 64, 65, 67]
+        fixed, count = _redistribute_convergent(note_map, available)
+        assert count == 0
+
+    def test_two_notes_same_replacement(self):
+        note_map = {85: 84, 87: 84}
+        available = [60, 62, 64, 65, 67, 69, 71, 72, 74, 76, 77, 79, 81, 83, 84]
+        fixed, count = _redistribute_convergent(note_map, available)
+        assert count > 0
+        assert fixed[85] != fixed[87]
+
+
+def _midi_event(note: int, time_ms: int, duration_ms: int = 100, velocity: int = 80) -> RawMidiEvent:
+    return RawMidiEvent(note=note, time_ms=time_ms, duration_ms=duration_ms, velocity=velocity, program=None)
+
+
+class TestMidiEventsToJianpu:
+    """Tests for midi_events_to_jianpu."""
+
+    def test_basic_output(self):
+        events = [
+            _midi_event(60, 0),
+            _midi_event(62, 500),
+            _midi_event(64, 1000),
+        ]
+        result = midi_events_to_jianpu(events, bpm=120.0, time_signature="4/4")
+        assert result
+        assert "1" in result
+
+    def test_empty_events(self):
+        result = midi_events_to_jianpu([], bpm=120.0)
+        assert result == ""
+
+    def test_contains_header(self):
+        events = [_midi_event(60, 0)]
+        result = midi_events_to_jianpu(events, bpm=120.0, time_signature="4/4", title="Test")
+        assert "Test" in result
+        assert "1=C" in result
+        assert "♩=120" in result
+
+    def test_chord_notation(self):
+        """Simultaneous notes should be grouped."""
+        events = [
+            _midi_event(60, 0),
+            _midi_event(64, 0),
+            _midi_event(67, 0),
+        ]
+        result = midi_events_to_jianpu(events, bpm=120.0)
+        assert "(" in result
+
+    def test_rest_notation(self):
+        """Gaps should produce rest markers."""
+        events = [
+            _midi_event(60, 0, duration_ms=100),
+            _midi_event(62, 2000, duration_ms=100),
+        ]
+        result = midi_events_to_jianpu(events, bpm=120.0)
+        assert "0" in result
+
+    def test_octave_markers(self):
+        """Notes above octave 4 should have ' markers."""
+        events = [_midi_event(84, 0)]
+        result = midi_events_to_jianpu(events, bpm=120.0)
+        assert "'" in result

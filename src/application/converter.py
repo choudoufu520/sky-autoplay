@@ -14,6 +14,23 @@ class MappingError(ValueError):
 
 
 @dataclass(slots=True)
+class DenoiseReport:
+    dedup_removed: int = 0
+    rate_limit_removed: int = 0
+    chord_repeat_removed: int = 0
+    simultaneous_removed: int = 0
+
+    @property
+    def total_removed(self) -> int:
+        return (
+            self.dedup_removed
+            + self.rate_limit_removed
+            + self.chord_repeat_removed
+            + self.simultaneous_removed
+        )
+
+
+@dataclass(slots=True)
 class ConvertOptions:
     profile: str | None = None
     transpose: int = 0
@@ -262,7 +279,7 @@ def convert_midi_to_chart(
     midi_path: Path,
     mapping: MappingConfig,
     options: ConvertOptions,
-) -> tuple[ChartDocument, list[str]]:
+) -> tuple[ChartDocument, list[str], DenoiseReport | None]:
     raw_events, ppq, tempo_count = read_midi_events(midi_path, tracks=options.tracks)
     warnings: list[str] = []
     chart_events: list[ChartEvent] = []
@@ -312,16 +329,17 @@ def convert_midi_to_chart(
         events=chart_events,
         metadata=ChartMetadata(source_midi=str(midi_path), ppq=ppq, tempo_event_count=tempo_count),
     )
+    denoise_report: DenoiseReport | None = None
     if options.denoise:
-        chart, removed = denoise_chart(
+        chart, denoise_report = denoise_chart(
             chart,
             max_simultaneous=options.denoise_max_simultaneous,
             max_chord_repeats=options.denoise_max_chord_repeats,
         )
-        if removed:
-            warnings.append(f"Denoise: removed {removed} duplicate/dense note events")
+        if denoise_report.total_removed:
+            warnings.append(f"Denoise: removed {denoise_report.total_removed} duplicate/dense note events")
 
-    return chart, warnings
+    return chart, warnings, denoise_report
 
 
 # ── Post-processing: denoise ───────────────────────────────
@@ -499,7 +517,7 @@ def denoise_chart(
     burst_gap_ms: int = 500,
     max_chord_repeats: int = 4,
     max_simultaneous: int = 3,
-) -> tuple[ChartDocument, int]:
+) -> tuple[ChartDocument, DenoiseReport]:
     """Remove duplicate / overly dense note events from a converted chart.
 
     Applies four music-theory-informed rules in order:
@@ -517,21 +535,32 @@ def denoise_chart(
        keep only the most important ones.
 
     Only ``tap`` events are filtered; ``down``/``up`` pairs are kept intact.
-    Returns (denoised_chart, number_of_removed_events).
+    Returns (denoised_chart, DenoiseReport).
     """
     taps = [ev for ev in chart.events if ev.action == "tap"]
     others = [ev for ev in chart.events if ev.action != "tap"]
-    original_count = len(taps)
 
+    report = DenoiseReport()
+
+    before = len(taps)
     taps = _dedup_simultaneous(taps, dedup_window_ms)
+    report.dedup_removed = before - len(taps)
+
+    before = len(taps)
     taps = _limit_key_repeat_rate(taps, max_key_per_burst, burst_gap_ms)
+    report.rate_limit_removed = before - len(taps)
+
+    before = len(taps)
     taps = _thin_repeating_chord(taps, max_chord_repeats)
+    report.chord_repeat_removed = before - len(taps)
+
+    before = len(taps)
     taps = _thin_simultaneous(taps, max_simultaneous)
+    report.simultaneous_removed = before - len(taps)
 
     merged = sorted(taps + others, key=lambda e: e.time_ms)
-    removed = original_count - len(taps)
     denoised = ChartDocument(events=merged, metadata=chart.metadata)
-    return denoised, removed
+    return denoised, report
 
 
 def _append_hold_event(
@@ -696,6 +725,84 @@ def chart_to_jianpu(
             continue
         beat_idx = round(ev.time_ms / beat_ms)
         grid_notes.setdefault(beat_idx, []).append(_midi_to_jianpu(midi_note))
+        end = ev.time_ms + (ev.duration_ms or 0)
+        if end > grid_end_ms.get(beat_idx, 0):
+            grid_end_ms[beat_idx] = end
+
+    if not grid_notes:
+        return ""
+
+    last_beat = max(grid_notes.keys())
+    total_beats = ((last_beat // beats_per_bar) + 1) * beats_per_bar
+
+    cells: list[str] = []
+    sustain_end = 0.0
+    for i in range(total_beats):
+        notes = grid_notes.get(i)
+        beat_start = i * beat_ms
+        if notes:
+            unique = list(dict.fromkeys(notes))
+            cells.append(
+                unique[0] if len(unique) == 1 else f"({' '.join(unique)})"
+            )
+            sustain_end = max(sustain_end, grid_end_ms.get(i, 0))
+        elif beat_start < sustain_end - beat_ms * 0.25:
+            cells.append("-")
+        else:
+            cells.append("0")
+
+    col_w = max((len(c) for c in cells), default=1) + 1
+    col_w = max(col_w, 3)
+
+    lines: list[str] = []
+    if title:
+        lines.append(title)
+    lines.append(f"1=C  {time_signature}  ♩={int(bpm)}")
+    lines.append("")
+
+    bar_strs: list[str] = []
+    for bar in range(0, total_beats, beats_per_bar):
+        bar_cells = cells[bar : bar + beats_per_bar]
+        bar_strs.append("  ".join(c.center(col_w) for c in bar_cells))
+
+    bars_per_line = 4
+    for i in range(0, len(bar_strs), bars_per_line):
+        chunk = bar_strs[i : i + bars_per_line]
+        is_last = i + bars_per_line >= len(bar_strs)
+        lines.append("| " + " | ".join(chunk) + (" ‖" if is_last else " |"))
+
+    lines.append("")
+    return "\n".join(lines)
+
+
+def midi_events_to_jianpu(
+    events: list[RawMidiEvent],
+    bpm: float = 120.0,
+    time_signature: str = "4/4",
+    title: str = "",
+) -> str:
+    """Convert raw MIDI events directly to Jianpu text (without key mapping).
+
+    This produces a Jianpu representation of the original MIDI, suitable for
+    side-by-side comparison with the converted chart's Jianpu output.
+    """
+    ts_parts = time_signature.split("/")
+    beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
+    beat_ms = 60000.0 / bpm
+
+    sorted_events = sorted(
+        (e for e in events if e.velocity > 0),
+        key=lambda e: e.time_ms,
+    )
+    if not sorted_events:
+        return ""
+
+    grid_notes: dict[int, list[str]] = {}
+    grid_end_ms: dict[int, float] = {}
+
+    for ev in sorted_events:
+        beat_idx = round(ev.time_ms / beat_ms)
+        grid_notes.setdefault(beat_idx, []).append(_midi_to_jianpu(ev.note))
         end = ev.time_ms + (ev.duration_ms or 0)
         if end > grid_end_ms.get(beat_idx, 0):
             grid_end_ms[beat_idx] = end
@@ -1039,6 +1146,319 @@ def _render_jianpu_pdf(
             pdf.line(final_x, bar_top, final_x, bar_bot)
 
         y += rh
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf.output(str(output_path))
+
+
+# ── Jianpu PDF comparison ──────────────────────────────────
+
+_COMPARE_LABEL_W = 24.0
+_COMPARE_SEP = 2.0
+
+
+def _cells_differ(a: JianpuCell, b: JianpuCell) -> bool:
+    a_set = frozenset((n.digit, n.dots_above, n.dots_below) for n in a.notes)
+    b_set = frozenset((n.digit, n.dots_above, n.dots_below) for n in b.notes)
+    return a_set != b_set
+
+
+def _events_to_bars(
+    events: list[RawMidiEvent],
+    bpm: float,
+    time_signature: str,
+) -> tuple[list[list[JianpuCell]], int, int]:
+    """Convert raw MIDI events to Jianpu bar grid.
+
+    Returns (bars, slots_per_bar, total_bars).
+    """
+    ts_parts = time_signature.split("/")
+    beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
+    beat_ms = 60000.0 / bpm
+    grid_ms = beat_ms / 2
+    slots_per_bar = beats_per_bar * 2
+
+    sorted_events = sorted(
+        (e for e in events if e.velocity > 0),
+        key=lambda e: e.time_ms,
+    )
+    if not sorted_events:
+        return [], slots_per_bar, 0
+
+    grid: dict[int, list[JianpuNote]] = {}
+    for ev in sorted_events:
+        slot = round(ev.time_ms / grid_ms)
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(ev.note))
+
+    if not grid:
+        return [], slots_per_bar, 0
+
+    last_slot = max(grid.keys())
+    total_bars = (last_slot // slots_per_bar) + 1
+
+    return _grid_to_bars(grid, slots_per_bar, total_bars), slots_per_bar, total_bars
+
+
+def _chart_to_bars(
+    chart: ChartDocument,
+    mapping: MappingConfig,
+    bpm: float,
+    time_signature: str,
+) -> tuple[list[list[JianpuCell]], int, int]:
+    """Convert chart events to Jianpu bar grid.
+
+    Returns (bars, slots_per_bar, total_bars).
+    """
+    reverse = _build_reverse_mapping(mapping)
+
+    ts_parts = time_signature.split("/")
+    beats_per_bar = int(ts_parts[0]) if len(ts_parts) >= 2 else 4
+    beat_ms = 60000.0 / bpm
+    grid_ms = beat_ms / 2
+    slots_per_bar = beats_per_bar * 2
+
+    events = sorted(
+        (e for e in chart.events if e.action in ("tap", "down")),
+        key=lambda e: e.time_ms,
+    )
+    if not events:
+        return [], slots_per_bar, 0
+
+    grid: dict[int, list[JianpuNote]] = {}
+    for ev in events:
+        midi_note = reverse.get(ev.key)
+        if midi_note is None:
+            continue
+        slot = round(ev.time_ms / grid_ms)
+        grid.setdefault(slot, []).append(_midi_to_jianpu_note(midi_note))
+
+    if not grid:
+        return [], slots_per_bar, 0
+
+    last_slot = max(grid.keys())
+    total_bars = (last_slot // slots_per_bar) + 1
+
+    return _grid_to_bars(grid, slots_per_bar, total_bars), slots_per_bar, total_bars
+
+
+def _grid_to_bars(
+    grid: dict[int, list[JianpuNote]],
+    slots_per_bar: int,
+    total_bars: int,
+) -> list[list[JianpuCell]]:
+    bars: list[list[JianpuCell]] = []
+    for bar_idx in range(total_bars):
+        bar_cells: list[JianpuCell] = []
+        for slot in range(slots_per_bar):
+            abs_slot = bar_idx * slots_per_bar + slot
+            raw_notes = grid.get(abs_slot, [])
+            seen: set[tuple[str, int, int]] = set()
+            unique: list[JianpuNote] = []
+            for n in raw_notes:
+                k = (n.digit, n.dots_above, n.dots_below)
+                if k not in seen:
+                    seen.add(k)
+                    unique.append(n)
+            bar_cells.append(JianpuCell(notes=unique))
+        bars.append(bar_cells)
+    return bars
+
+
+def compare_jianpu_pdf(
+    chart: ChartDocument,
+    mapping: MappingConfig,
+    raw_events: list[RawMidiEvent],
+    output_path: Path,
+    bpm: float = 120.0,
+    time_signature: str = "4/4",
+    title: str = "",
+) -> None:
+    """Render a comparison PDF: original MIDI vs converted chart.
+
+    Each bar group shows the original on top, the converted on the bottom.
+    Cells that differ between original and converted are highlighted.
+    """
+    orig_bars, slots_per_bar, orig_total = _events_to_bars(raw_events, bpm, time_signature)
+    conv_bars, _, conv_total = _chart_to_bars(chart, mapping, bpm, time_signature)
+
+    total_bars = max(orig_total, conv_total)
+    if total_bars == 0:
+        return
+
+    while len(orig_bars) < total_bars:
+        orig_bars.append([JianpuCell() for _ in range(slots_per_bar)])
+    while len(conv_bars) < total_bars:
+        conv_bars.append([JianpuCell() for _ in range(slots_per_bar)])
+
+    _render_compare_jianpu_pdf(
+        orig_bars, conv_bars, slots_per_bar, total_bars,
+        output_path, time_signature, bpm, title,
+    )
+
+
+def _draw_compare_row(
+    pdf: object,
+    font: str,
+    row_bars: list[list[JianpuCell]],
+    y: float,
+    music_x: float,
+    col_w: float,
+    slots_per_bar: int,
+    num_bars: int,
+    label: str,
+    row_start: int,
+    is_last: bool,
+    label_color: tuple[int, int, int] = (0, 0, 0),
+    diff_against: list[list[JianpuCell]] | None = None,
+) -> None:
+    """Draw one row of bars with label and optional difference highlighting."""
+    rh = _row_height(row_bars)
+
+    max_da = 0
+    max_chord = 1
+    for bar in row_bars:
+        for cell in bar:
+            if cell.notes:
+                max_chord = max(max_chord, len(cell.notes))
+                for n in cell.notes:
+                    max_da = max(max_da, n.dots_above)
+    above_h = (_DOT_ABOVE_OFFSET + max_da * _DOT_ABOVE_GAP) if max_da else 0
+    first_baseline_y = y + above_h + _ASCENT
+
+    bar_top = y - 1
+    bar_bot = y + rh - _ROW_GAP + 1
+
+    # Pass 1: diff highlights (background layer)
+    if diff_against:
+        for bi, bar in enumerate(row_bars):
+            diff_bar = diff_against[bi] if bi < len(diff_against) else None
+            if not diff_bar:
+                continue
+            bar_x = music_x + bi * slots_per_bar * col_w
+            for si, cell in enumerate(bar):
+                if si < len(diff_bar) and _cells_differ(cell, diff_bar[si]):
+                    pdf.set_fill_color(255, 220, 200)  # type: ignore[union-attr]
+                    hl_x = bar_x + si * col_w
+                    pdf.rect(hl_x, bar_top + 0.3, col_w, bar_bot - bar_top - 0.6, "F")  # type: ignore[union-attr]
+
+    # Label
+    pdf.set_font(font, "", 7)  # type: ignore[union-attr]
+    pdf.set_text_color(*label_color)  # type: ignore[union-attr]
+    pdf.text(_MARGIN + 0.5, first_baseline_y - 2, f"({row_start + 1})")  # type: ignore[union-attr]
+    pdf.text(_MARGIN + 0.5, first_baseline_y + 2.5, label)  # type: ignore[union-attr]
+    pdf.set_text_color(0, 0, 0)  # type: ignore[union-attr]
+
+    # Pass 2: bar lines + notes (foreground layer)
+    pdf.set_font(font, "", _DIGIT_PT)  # type: ignore[union-attr]
+    pdf.set_draw_color(0, 0, 0)  # type: ignore[union-attr]
+    pdf.set_fill_color(0, 0, 0)  # type: ignore[union-attr]
+
+    for bi, bar in enumerate(row_bars):
+        bar_x = music_x + bi * slots_per_bar * col_w
+
+        pdf.set_line_width(_BAR_LINE_W)  # type: ignore[union-attr]
+        pdf.line(bar_x, bar_top, bar_x, bar_bot)  # type: ignore[union-attr]
+
+        for si, cell in enumerate(bar):
+            if not cell.notes:
+                continue
+            cx = bar_x + si * col_w + col_w / 2
+
+            for ni, note in enumerate(cell.notes):
+                baseline_y = first_baseline_y + ni * _NOTE_SPACING
+                digit_w = pdf.get_string_width(note.digit)  # type: ignore[union-attr]
+                pdf.text(cx - digit_w / 2, baseline_y, note.digit)  # type: ignore[union-attr]
+
+                for d in range(note.dots_above):
+                    dy = baseline_y - _ASCENT - _DOT_ABOVE_OFFSET - d * _DOT_ABOVE_GAP
+                    pdf.ellipse(  # type: ignore[union-attr]
+                        cx - _DOT_R, dy - _DOT_R, 2 * _DOT_R, 2 * _DOT_R, "F",
+                    )
+
+                for d in range(note.dots_below):
+                    dy = baseline_y + _DOT_BELOW_OFFSET + d * _DOT_BELOW_GAP
+                    pdf.ellipse(  # type: ignore[union-attr]
+                        cx - _DOT_R, dy - _DOT_R, 2 * _DOT_R, 2 * _DOT_R, "F",
+                    )
+
+    final_x = music_x + num_bars * slots_per_bar * col_w
+    if is_last:
+        pdf.set_line_width(_BAR_LINE_W)  # type: ignore[union-attr]
+        pdf.line(final_x - 1.5, bar_top, final_x - 1.5, bar_bot)  # type: ignore[union-attr]
+        pdf.set_line_width(_BAR_LINE_W * 3)  # type: ignore[union-attr]
+        pdf.line(final_x, bar_top, final_x, bar_bot)  # type: ignore[union-attr]
+        pdf.set_line_width(_BAR_LINE_W)  # type: ignore[union-attr]
+    else:
+        pdf.set_line_width(_BAR_LINE_W)  # type: ignore[union-attr]
+        pdf.line(final_x, bar_top, final_x, bar_bot)  # type: ignore[union-attr]
+
+
+def _render_compare_jianpu_pdf(
+    orig_bars: list[list[JianpuCell]],
+    conv_bars: list[list[JianpuCell]],
+    slots_per_bar: int,
+    total_bars: int,
+    output_path: Path,
+    time_signature: str,
+    bpm: float,
+    title: str,
+) -> None:
+    from fpdf import FPDF
+
+    label_w = _COMPARE_LABEL_W
+    content_w = _PAGE_W - 2 * _MARGIN
+    music_w = content_w - label_w
+    cols_per_line = _BARS_PER_LINE * slots_per_bar
+    col_w = music_w / cols_per_line
+
+    pdf = FPDF(orientation="L", unit="mm", format="A4")
+    pdf.set_auto_page_break(auto=False)
+    font = _register_cjk_font(pdf)
+    pdf.add_page()
+
+    y = _MARGIN
+    if title:
+        pdf.set_font(font, "B", 16)
+        tw = pdf.get_string_width(title)
+        pdf.text((_PAGE_W - tw) / 2, y + 5.5, title)
+        y += 10
+
+    info = f"1=C  {time_signature}  BPM={int(bpm)}"
+    pdf.set_font(font, "", 11)
+    tw = pdf.get_string_width(info)
+    pdf.text((_PAGE_W - tw) / 2, y + 4, info)
+    y += 9
+
+    music_x = _MARGIN + label_w
+
+    for row_start in range(0, total_bars, _BARS_PER_LINE):
+        orig_row = orig_bars[row_start : row_start + _BARS_PER_LINE]
+        conv_row = conv_bars[row_start : row_start + _BARS_PER_LINE]
+        num_bars = len(orig_row)
+        is_last = row_start + num_bars >= total_bars
+
+        orig_rh = _row_height(orig_row)
+        conv_rh = _row_height(conv_row)
+        group_h = orig_rh + _COMPARE_SEP + conv_rh
+
+        if y + group_h > _PAGE_H - _MARGIN:
+            pdf.add_page()
+            y = _MARGIN
+
+        _draw_compare_row(
+            pdf, font, orig_row, y, music_x, col_w, slots_per_bar,
+            num_bars, "原曲", row_start, is_last,
+            label_color=(40, 80, 180),
+        )
+        y += orig_rh + _COMPARE_SEP
+
+        _draw_compare_row(
+            pdf, font, conv_row, y, music_x, col_w, slots_per_bar,
+            num_bars, "转换后", row_start, is_last,
+            label_color=(200, 50, 50),
+            diff_against=orig_row,
+        )
+        y += conv_rh
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     pdf.output(str(output_path))
