@@ -11,7 +11,9 @@ from src.application.converter import (
     ConvertOptions,
     _fuzzy_position_lookup,
     convert_midi_to_chart,
+    denoise_chart,
 )
+from src.domain.chart import ChartDocument, ChartEvent, ChartMetadata
 from src.domain.mapping import MappingConfig, MappingProfile
 
 
@@ -224,3 +226,139 @@ class TestConvertMidiToChart:
         assert len(chart.events) == 1
         assert chart.events[0].key == "y"
         assert any("ai-ctx" in warning for warning in warnings)
+
+
+def _tap(time_ms: int, key: str, duration_ms: int = 100) -> ChartEvent:
+    return ChartEvent(time_ms=time_ms, key=key, action="tap", duration_ms=duration_ms)
+
+
+def _chart(*events: ChartEvent) -> ChartDocument:
+    return ChartDocument(events=list(events), metadata=ChartMetadata())
+
+
+class TestDenoiseDeduplicateSimultaneous:
+    """Rule 1: remove same-key taps within dedup_window_ms (unison/octave collapse)."""
+
+    def test_removes_exact_duplicate(self):
+        chart = _chart(_tap(0, "y"), _tap(0, "y"))
+        result, removed = denoise_chart(chart)
+        assert len(result.events) == 1
+        assert removed == 1
+
+    def test_removes_near_duplicate_within_window(self):
+        chart = _chart(_tap(0, "y"), _tap(20, "y"))
+        result, removed = denoise_chart(chart, dedup_window_ms=30)
+        assert len(result.events) == 1
+        assert removed == 1
+
+    def test_keeps_different_keys_at_same_time(self):
+        chart = _chart(_tap(0, "y"), _tap(0, "u"))
+        result, removed = denoise_chart(chart)
+        assert len(result.events) == 2
+        assert removed == 0
+
+    def test_keeps_same_key_beyond_window(self):
+        chart = _chart(_tap(0, "y"), _tap(100, "y"))
+        result, removed = denoise_chart(chart, dedup_window_ms=30)
+        assert len(result.events) == 2
+        assert removed == 0
+
+
+class TestDenoiseLimitConsecutiveSame:
+    """Rule 2: limit consecutive same-key repeats (tremolo/pedal point)."""
+
+    def test_trims_long_run(self):
+        events = [_tap(i * 50, "y") for i in range(8)]
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        keys = [e.key for e in result.events]
+        assert all(k == "y" for k in keys)
+        assert len(keys) == 3
+        assert removed == 5
+
+    def test_keeps_short_run(self):
+        events = [_tap(i * 50, "y") for i in range(3)]
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        assert len(result.events) == 3
+        assert removed == 0
+
+    def test_run_broken_by_different_key(self):
+        events = [
+            _tap(0, "y"), _tap(50, "y"), _tap(100, "y"),
+            _tap(150, "u"),
+            _tap(200, "y"), _tap(250, "y"), _tap(300, "y"),
+        ]
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        assert len(result.events) == 7
+        assert removed == 0
+
+    def test_preserves_first_and_last(self):
+        events = [_tap(i * 50, "y") for i in range(10)]
+        chart = _chart(*events)
+        result, _ = denoise_chart(chart, dedup_window_ms=0, max_consecutive_same=3)
+        assert result.events[0].time_ms == 0
+        assert result.events[-1].time_ms == 450
+
+
+class TestDenoiseThinSimultaneous:
+    """Rule 3: thin dense simultaneous events beyond max_simultaneous."""
+
+    def test_thins_dense_chord(self):
+        events = [
+            _tap(0, "y", duration_ms=200),
+            _tap(0, "u", duration_ms=100),
+            _tap(0, "i", duration_ms=300),
+            _tap(0, "o", duration_ms=50),
+            _tap(0, "p", duration_ms=150),
+            _tap(0, "h", duration_ms=10),
+        ]
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, dedup_window_ms=0, max_simultaneous=3)
+        assert len(result.events) == 3
+        assert removed == 3
+        kept_keys = {e.key for e in result.events}
+        assert "i" in kept_keys
+        assert "y" in kept_keys
+
+    def test_keeps_within_limit(self):
+        events = [_tap(0, "y"), _tap(0, "u"), _tap(0, "i")]
+        chart = _chart(*events)
+        result, removed = denoise_chart(chart, max_simultaneous=4)
+        assert len(result.events) == 3
+        assert removed == 0
+
+    def test_preserves_hold_events(self):
+        hold_down = ChartEvent(time_ms=0, key="y", action="down")
+        hold_up = ChartEvent(time_ms=100, key="y", action="up")
+        chart = _chart(hold_down, hold_up, _tap(0, "y"))
+        result, removed = denoise_chart(chart)
+        actions = [e.action for e in result.events]
+        assert "down" in actions
+        assert "up" in actions
+
+
+class TestDenoiseIntegration:
+    """All three rules applied together."""
+
+    def test_combined_dedup_and_thin(self):
+        events = [
+            _tap(0, "y"), _tap(0, "y"),
+            _tap(0, "u"), _tap(5, "i"),
+            _tap(0, "o"), _tap(0, "p"),
+            _tap(0, "h"), _tap(0, "j"),
+        ]
+        chart = _chart(*events)
+        result, removed = denoise_chart(
+            chart, dedup_window_ms=30, max_simultaneous=4,
+        )
+        assert removed > 0
+        keys_at_0 = [e.key for e in result.events if e.time_ms <= 30]
+        assert len(set(keys_at_0)) <= 4
+
+    def test_empty_chart(self):
+        chart = _chart()
+        result, removed = denoise_chart(chart)
+        assert len(result.events) == 0
+        assert removed == 0

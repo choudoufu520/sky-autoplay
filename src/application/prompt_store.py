@@ -30,6 +30,7 @@ For each unmapped note, suggest which available note should replace it.
 === FORBIDDEN ===
 - Do NOT map two different adjacent unmapped notes to the same replacement. Each distinct original pitch should get a distinct replacement when possible.
 - Do NOT create semitone clusters: if two unmapped notes are next to each other (e.g. 61 and 63), their replacements must not be adjacent semitones (e.g. both mapping to 60).
+- ANTI-CONVERGENCE — if two different unmapped notes frequently co-occur (appear within 50ms of each other in the piece), they MUST NOT map to the same replacement. Converging different pitches onto one key creates a "double tap" stutter that sounds noisy. Spread them to distinct available notes, or drop one with -1 if a style allows dropping.
 
 === EXAMPLE (good vs. bad) ===
 Unmapped: 61(C#4), 63(D#4).  Available: [..., 60(C4), 62(D4), 64(E4), ...]
@@ -79,6 +80,7 @@ These provide harmonic support. More flexibility allowed:
 2. AVOID CLASHES — within the same group, do not create adjacent semitones (e.g. C and C#) in the replacements.
 3. SIMPLIFICATION OK — if a chord has too many unmapped notes, it is better to keep root + one color tone than to force all notes into awkward positions.
 4. VOICE LEADING — when the same chord voice appears in consecutive groups, prefer the replacement closest to the previous group's replacement for that voice. Minimize total pitch movement of inner voices between consecutive chords.
+5. ANTI-CONVERGENCE — do NOT map two different unmapped notes within the same group to the same replacement. This creates a "double tap" on one key that sounds stuttery and noisy. Spread them to different available notes, or drop one with -1 if the style permits.
 
 === GENERAL RULES ===
 1. SHARPS/FLATS — for accidentals (C#, Eb, etc.), prefer the adjacent natural note in the direction of the melody movement.

@@ -144,7 +144,8 @@ class ConvertTab(QWidget):
         self.tracks_combo.setView(QListView())
         self._tracks_model = QStandardItemModel(self.tracks_combo)
         self.tracks_combo.setModel(self._tracks_model)
-        self.tracks_combo.setEditable(False)
+        self.tracks_combo.setEditable(True)
+        self.tracks_combo.lineEdit().setReadOnly(True)
         self.form.addRow(self.tracks_label, self.tracks_combo)
 
         self.snap_check = QCheckBox()
@@ -153,6 +154,9 @@ class ConvertTab(QWidget):
 
         self.strict_check = QCheckBox()
         self.form.addRow(self.strict_check)
+
+        self.denoise_check = QCheckBox()
+        self.form.addRow(self.denoise_check)
 
         self.preview_midi_check = QCheckBox()
         self.form.addRow(self.preview_midi_check)
@@ -408,6 +412,8 @@ class ConvertTab(QWidget):
         self.apply_suggest_btn.setToolTip(tr("convert.apply_tooltip"))
         self.snap_check.setText(tr("convert.snap"))
         self.strict_check.setText(tr("convert.strict"))
+        self.denoise_check.setText(tr("convert.denoise"))
+        self.denoise_check.setToolTip(tr("convert.denoise_tip"))
         self.preview_midi_check.setText(tr("convert.preview_midi"))
         self.convert_btn.setText(tr("convert.btn"))
         self.listen_btn.setText(tr("convert.listen"))
@@ -1133,6 +1139,7 @@ class ConvertTab(QWidget):
             tracks=tracks,
             ai_note_map=ai_note_map,
             ai_position_map=ai_position_map or {},
+            denoise=self.denoise_check.isChecked(),
         )
 
         try:
@@ -1271,6 +1278,7 @@ class ConvertTab(QWidget):
             tracks=tracks,
             ai_note_map=self._ai_note_map,
             ai_position_map=self._ai_position_map or {},
+            denoise=self.denoise_check.isChecked(),
         )
 
         try:

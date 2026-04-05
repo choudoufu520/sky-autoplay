@@ -46,6 +46,7 @@ def convert_command(
     snap: bool = typer.Option(False, "--snap", help="Snap unmapped notes to nearest mapped note"),
     note_mode: str = typer.Option("tap", "--note-mode", help="tap or hold"),
     single_track: int | None = typer.Option(None, "--single-track", help="Read a specific MIDI track"),
+    denoise: bool = typer.Option(False, "--denoise", help="Remove duplicate/dense notes (unison, tremolo, chord thinning)"),
 ) -> None:
     """Convert MIDI into chart JSON."""
     if note_mode not in {"tap", "hold"}:
@@ -60,6 +61,7 @@ def convert_command(
         snap=snap,
         note_mode=note_mode,
         tracks=[single_track] if single_track is not None else None,
+        denoise=denoise,
     )
 
     try:

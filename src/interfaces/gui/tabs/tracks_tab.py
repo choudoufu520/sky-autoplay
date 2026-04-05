@@ -182,8 +182,8 @@ class TracksTab(QWidget):
         self._last_analysis = analysis
         self._show_key_analysis(analysis)
         self.key_analyzed.emit(analysis)
-        self.tracks_selected.emit(selected)
         self.midi_loaded.emit(path)
+        self.tracks_selected.emit(selected)
 
     def _on_check_changed(self) -> None:
         if self._suppress_check_signal:

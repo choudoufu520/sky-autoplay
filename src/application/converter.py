@@ -24,6 +24,7 @@ class ConvertOptions:
     tracks: list[int] | None = None
     ai_note_map: dict[int, int] | None = None
     ai_position_map: dict[tuple[int, int], int] = field(default_factory=dict)
+    denoise: bool = False
 
 
 def _resolve_profile_for_event(
@@ -309,7 +310,148 @@ def convert_midi_to_chart(
         events=chart_events,
         metadata=ChartMetadata(source_midi=str(midi_path), ppq=ppq, tempo_event_count=tempo_count),
     )
+    if options.denoise:
+        chart, removed = denoise_chart(chart)
+        if removed:
+            warnings.append(f"Denoise: removed {removed} duplicate/dense note events")
+
     return chart, warnings
+
+
+# ── Post-processing: denoise ───────────────────────────────
+
+
+def _dedup_simultaneous(
+    events: list[ChartEvent],
+    window_ms: int,
+) -> list[ChartEvent]:
+    """Remove duplicate taps on the same key within a short time window.
+
+    Keeps the first occurrence. Handles unison doublings and octave
+    doublings that collapsed onto the same game key.
+    """
+    kept: list[ChartEvent] = []
+    last_time_for_key: dict[str, int] = {}
+    for ev in events:
+        prev = last_time_for_key.get(ev.key)
+        if prev is not None and ev.time_ms - prev <= window_ms:
+            continue
+        last_time_for_key[ev.key] = ev.time_ms
+        kept.append(ev)
+    return kept
+
+
+def _limit_consecutive_same(
+    events: list[ChartEvent],
+    max_consecutive: int,
+    gap_ms: int = 300,
+) -> list[ChartEvent]:
+    """Thin out runs of the same key repeating in quick succession.
+
+    When a key is tapped more than *max_consecutive* times in a row
+    (with no other key in between, each gap < *gap_ms*), keep the first,
+    last, and up to max_consecutive-2 evenly spaced middle hits.
+    This handles tremolo / pedal-point patterns.
+    """
+    if not events:
+        return events
+
+    kept: list[ChartEvent] = []
+    run: list[ChartEvent] = [events[0]]
+
+    def _flush_run() -> None:
+        if len(run) <= max_consecutive:
+            kept.extend(run)
+        else:
+            kept.append(run[0])
+            inner_count = max_consecutive - 2
+            if inner_count > 0:
+                step = (len(run) - 2) / (inner_count + 1)
+                for i in range(1, inner_count + 1):
+                    kept.append(run[int(i * step)])
+            kept.append(run[-1])
+
+    for ev in events[1:]:
+        tail = run[-1]
+        same_key = ev.key == tail.key
+        close_in_time = (ev.time_ms - tail.time_ms) < gap_ms
+        if same_key and close_in_time:
+            run.append(ev)
+        else:
+            _flush_run()
+            run = [ev]
+    _flush_run()
+    return kept
+
+
+def _thin_simultaneous(
+    events: list[ChartEvent],
+    max_simultaneous: int,
+    window_ms: int = 30,
+) -> list[ChartEvent]:
+    """When too many different keys fire at once, keep only the loudest ones.
+
+    Groups events within *window_ms* and, if the group exceeds
+    *max_simultaneous*, retains only those with the longest duration
+    (proxy for musical importance when velocity is unavailable in chart).
+    """
+    if not events:
+        return events
+
+    groups: list[list[int]] = []
+    current_group: list[int] = [0]
+    for i in range(1, len(events)):
+        if events[i].time_ms - events[current_group[0]].time_ms <= window_ms:
+            current_group.append(i)
+        else:
+            groups.append(current_group)
+            current_group = [i]
+    groups.append(current_group)
+
+    keep_indices: set[int] = set()
+    for group in groups:
+        if len(group) <= max_simultaneous:
+            keep_indices.update(group)
+        else:
+            ranked = sorted(
+                group,
+                key=lambda idx: (events[idx].duration_ms or 0),
+                reverse=True,
+            )
+            keep_indices.update(ranked[:max_simultaneous])
+
+    return [ev for i, ev in enumerate(events) if i in keep_indices]
+
+
+def denoise_chart(
+    chart: ChartDocument,
+    *,
+    dedup_window_ms: int = 30,
+    max_consecutive_same: int = 3,
+    max_simultaneous: int = 4,
+) -> tuple[ChartDocument, int]:
+    """Remove duplicate / overly dense note events from a converted chart.
+
+    Applies three music-theory-informed rules in order:
+    1. Same-key deduplication within a short time window (unison / octave collapse)
+    2. Consecutive same-key rate limiting (tremolo / pedal point)
+    3. Simultaneous-key thinning (dense chords exceeding hand capacity)
+
+    Only ``tap`` events are filtered; ``down``/``up`` pairs are kept intact.
+    Returns (denoised_chart, number_of_removed_events).
+    """
+    taps = [ev for ev in chart.events if ev.action == "tap"]
+    others = [ev for ev in chart.events if ev.action != "tap"]
+    original_count = len(taps)
+
+    taps = _dedup_simultaneous(taps, dedup_window_ms)
+    taps = _limit_consecutive_same(taps, max_consecutive_same)
+    taps = _thin_simultaneous(taps, max_simultaneous)
+
+    merged = sorted(taps + others, key=lambda e: e.time_ms)
+    removed = original_count - len(taps)
+    denoised = ChartDocument(events=merged, metadata=chart.metadata)
+    return denoised, removed
 
 
 def _append_hold_event(

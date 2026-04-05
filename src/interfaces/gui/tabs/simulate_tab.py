@@ -31,6 +31,7 @@ from src.application.audio_engine import (
 from src.domain.chart import ChartDocument
 from src.infrastructure.repository import load_chart, load_mapping
 from src.interfaces.gui.i18n import on_language_changed, tr
+from src.interfaces.gui.paths import default_mapping_path
 from src.interfaces.gui.widgets.note_timeline import NoteTimelineWidget
 from src.interfaces.gui.widgets.sky_keyboard import SkyKeyboardWidget
 from src.interfaces.gui.widgets.timeline_dialog import TimelineDialog
@@ -64,7 +65,7 @@ class SimulateTab(QWidget):
         map_row = QHBoxLayout()
         self.map_label = QLabel()
         map_row.addWidget(self.map_label)
-        self.map_edit = QLineEdit()
+        self.map_edit = QLineEdit(default_mapping_path())
         map_row.addWidget(self.map_edit, 1)
         self.map_browse = QPushButton()
         self.map_browse.clicked.connect(self._browse_mapping)
@@ -193,6 +194,8 @@ class SimulateTab(QWidget):
     def set_chart_path(self, path: str) -> None:
         self.chart_edit.setText(path)
         self._load_timeline(path)
+        if not self._mapping_loaded:
+            self._load_mapping()
 
     def set_mapping_path(self, path: str, auto_load: bool = False) -> None:
         self.map_edit.setText(path)
