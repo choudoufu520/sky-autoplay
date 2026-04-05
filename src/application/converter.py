@@ -21,7 +21,7 @@ class ConvertOptions:
     strict: bool = False
     snap: bool = False
     note_mode: str = "tap"  # tap|hold
-    single_track: int | None = None
+    tracks: list[int] | None = None
     ai_note_map: dict[int, int] | None = None
     ai_position_map: dict[tuple[int, int], int] = field(default_factory=dict)
 
@@ -260,7 +260,7 @@ def convert_midi_to_chart(
     mapping: MappingConfig,
     options: ConvertOptions,
 ) -> tuple[ChartDocument, list[str]]:
-    raw_events, ppq, tempo_count = read_midi_events(midi_path, single_track=options.single_track)
+    raw_events, ppq, tempo_count = read_midi_events(midi_path, tracks=options.tracks)
     warnings: list[str] = []
     chart_events: list[ChartEvent] = []
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import threading
 import time
+from bisect import bisect_left
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -72,7 +73,8 @@ def play_chart(
 
     grouped = _group_by_time(chart.events)
     if start_from > 0:
-        grouped = [(t, evts) for t, evts in grouped if t >= start_from]
+        idx = bisect_left(grouped, (start_from,))
+        grouped = grouped[idx:]
     total_groups = len(grouped)
     total_ms = (grouped[-1][0] - start_from) if grouped else 0
 

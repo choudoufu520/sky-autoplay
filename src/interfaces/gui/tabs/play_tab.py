@@ -3,6 +3,9 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import re
+
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -14,16 +17,19 @@ from PySide6.QtWidgets import (
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
 
 from src.application.player import DEFAULT_TAP_PRESS_MS, PlayOptions
+from src.domain.chart import ChartDocument
 from src.infrastructure.input_backends import DryRunInputBackend, PynputInputBackend
 from src.infrastructure.repository import load_chart
 from src.interfaces.gui.i18n import on_language_changed, tr
 from src.interfaces.gui.play_overlay import PlayOverlay
 from src.interfaces.gui.widgets.note_timeline import NoteTimelineWidget
+from src.interfaces.gui.widgets.timeline_dialog import TimelineDialog
 from src.interfaces.gui.workers.play_worker import PlayWorker
 
 _log = logging.getLogger(__name__)
@@ -45,6 +51,7 @@ class PlayTab(QWidget):
         self._worker: PlayWorker | None = None
         self._overlay: PlayOverlay | None = None
         self._hotkey_listener = None
+        self._cached_chart: ChartDocument | None = None
         layout = QVBoxLayout(self)
 
         chart_row = QHBoxLayout()
@@ -98,9 +105,24 @@ class PlayTab(QWidget):
         self.form.addRow(self.debug_check)
         layout.addLayout(self.form)
 
+        start_row = QHBoxLayout()
         self.start_from_label = QLabel()
-        layout.addWidget(self.start_from_label)
+        start_row.addWidget(self.start_from_label)
+        self.position_edit = QLineEdit("00:00")
+        self.position_edit.setFixedWidth(60)
+        self.position_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.position_edit.editingFinished.connect(self._on_position_edited)
+        start_row.addWidget(self.position_edit)
+        self.reset_btn = QPushButton()
+        self.reset_btn.clicked.connect(self._reset_position)
+        start_row.addWidget(self.reset_btn)
+        self.expand_btn = QToolButton()
+        self.expand_btn.clicked.connect(self._open_timeline_dialog)
+        start_row.addWidget(self.expand_btn)
+        start_row.addStretch()
+        layout.addLayout(start_row)
         self.timeline = NoteTimelineWidget()
+        self.timeline.position_changed.connect(self._sync_position_edit)
         layout.addWidget(self.timeline)
 
         btn_row = QHBoxLayout()
@@ -138,6 +160,8 @@ class PlayTab(QWidget):
         self.play_btn.setText(tr("play.start"))
         self.stop_btn.setText(tr("play.stop"))
         self.start_from_label.setText(tr("play.start_from"))
+        self.reset_btn.setText(tr("play.reset_position"))
+        self.expand_btn.setText(tr("play.open_timeline"))
 
         self.latency_spin.setToolTip(tr("play.tip_latency"))
         self.countdown_spin.setToolTip(tr("play.tip_countdown"))
@@ -158,11 +182,13 @@ class PlayTab(QWidget):
             self._load_timeline(path)
 
     def _load_timeline(self, path: str) -> None:
+        self._cached_chart = None
         if not path.strip():
             self.timeline.clear()
             return
         try:
             chart = load_chart(Path(path))
+            self._cached_chart = chart
             total_ms = max(e.time_ms for e in chart.events) if chart.events else 0
             self.timeline.set_events(chart.events, total_ms)
         except Exception:
@@ -174,11 +200,13 @@ class PlayTab(QWidget):
             self.log_text.appendPlainText(tr("play.err_no_chart"))
             return
 
-        try:
-            chart = load_chart(Path(chart_path))
-        except Exception as exc:
-            self.log_text.appendPlainText(tr("play.err_load").format(err=exc))
-            return
+        chart = self._cached_chart
+        if chart is None:
+            try:
+                chart = load_chart(Path(chart_path))
+            except Exception as exc:
+                self.log_text.appendPlainText(tr("play.err_load").format(err=exc))
+                return
 
         if chart.events and not self.timeline._bins:
             total_ms = max(e.time_ms for e in chart.events)
@@ -286,3 +314,32 @@ class PlayTab(QWidget):
         if self._hotkey_listener is not None:
             self._hotkey_listener.stop()
             self._hotkey_listener = None
+
+    # ── start position helpers ─────────────────────────────
+
+    def _sync_position_edit(self, ms: int) -> None:
+        s = max(0, ms // 1000)
+        m, s = divmod(s, 60)
+        self.position_edit.setText(f"{m:02d}:{s:02d}")
+
+    def _on_position_edited(self) -> None:
+        text = self.position_edit.text().strip()
+        m = re.match(r"^(\d+):(\d{1,2})$", text)
+        if m:
+            ms = (int(m.group(1)) * 60 + int(m.group(2))) * 1000
+            self.timeline.set_position(ms)
+
+    def _reset_position(self) -> None:
+        self.timeline.reset()
+
+    def _open_timeline_dialog(self) -> None:
+        if not self.timeline.total_ms:
+            return
+        dlg = TimelineDialog(
+            self.timeline.events,
+            self.timeline.total_ms,
+            self.timeline.position_ms,
+            parent=self,
+        )
+        if dlg.exec():
+            self.timeline.set_position(dlg.position_ms)

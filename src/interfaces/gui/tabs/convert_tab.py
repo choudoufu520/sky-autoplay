@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 
 from PySide6.QtCore import QSettings, Qt, QThread, QTimer, Signal
+from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QLabel,
     QLineEdit,
+    QListView,
     QPlainTextEdit,
     QPushButton,
     QSpinBox,
@@ -44,19 +46,19 @@ logger = logging.getLogger(__name__)
 class _OptimalWorker(QThread):
     finished = Signal(object)
 
-    def __init__(self, midi_path: Path, mapping, profile: str, single_track, parent=None):
+    def __init__(self, midi_path: Path, mapping, profile: str, tracks, parent=None):
         super().__init__(parent)
         self.midi_path = midi_path
         self.mapping = mapping
         self.profile = profile
-        self.single_track = single_track
+        self.tracks = tracks
 
     def run(self) -> None:
         from src.application.ai_arranger import find_optimal_settings
         try:
             results = find_optimal_settings(
                 self.midi_path, self.mapping, self.profile,
-                single_track=self.single_track,
+                tracks=self.tracks,
             )
             self.finished.emit(results)
         except Exception:
@@ -137,10 +139,13 @@ class ConvertTab(QWidget):
         self.note_mode_combo.addItems(["tap", "hold"])
         self.form.addRow(self.note_mode_label, self.note_mode_combo)
 
-        self.single_track_label = QLabel()
-        self.single_track_combo = QComboBox()
-        self.single_track_combo.addItem(tr("convert.all"), userData=None)
-        self.form.addRow(self.single_track_label, self.single_track_combo)
+        self.tracks_label = QLabel()
+        self.tracks_combo = QComboBox()
+        self.tracks_combo.setView(QListView())
+        self._tracks_model = QStandardItemModel(self.tracks_combo)
+        self.tracks_combo.setModel(self._tracks_model)
+        self.tracks_combo.setEditable(False)
+        self.form.addRow(self.tracks_label, self.tracks_combo)
 
         self.snap_check = QCheckBox()
         self.snap_check.setChecked(True)
@@ -367,12 +372,12 @@ class ConvertTab(QWidget):
         self._optimal_debounce.setInterval(300)
         self._optimal_debounce.timeout.connect(self._do_refresh_optimal)
 
-        self.single_track_combo.currentIndexChanged.connect(self._on_track_changed)
+        self._tracks_model.itemChanged.connect(self._on_track_changed)
         self.mapping_edit.textChanged.connect(self._refresh_profiles)
         self._refresh_profiles()
         self.transpose_spin.valueChanged.connect(self._refresh_optimal_hint)
         self.octave_spin.valueChanged.connect(self._refresh_optimal_hint)
-        self.single_track_combo.currentIndexChanged.connect(self._refresh_optimal_hint)
+        self._tracks_model.itemChanged.connect(lambda: self._refresh_optimal_hint())
         self.mapping_edit.textChanged.connect(self._refresh_optimal_hint)
 
         self.ai_group.toggled.connect(self._on_ai_toggled)
@@ -396,13 +401,11 @@ class ConvertTab(QWidget):
         self.transpose_label.setText(tr("convert.transpose"))
         self.octave_label.setText(tr("convert.octave"))
         self.note_mode_label.setText(tr("convert.note_mode"))
-        self.single_track_label.setText(tr("convert.single_track"))
+        self.tracks_label.setText(tr("convert.tracks"))
 
         self.key_info_label.setText(tr("convert.key_hint"))
         self.apply_suggest_btn.setText(tr("convert.apply_suggested"))
         self.apply_suggest_btn.setToolTip(tr("convert.apply_tooltip"))
-        if self.single_track_combo.count() > 0:
-            self.single_track_combo.setItemText(0, tr("convert.all"))
         self.snap_check.setText(tr("convert.snap"))
         self.strict_check.setText(tr("convert.strict"))
         self.preview_midi_check.setText(tr("convert.preview_midi"))
@@ -463,28 +466,69 @@ class ConvertTab(QWidget):
         self._refresh_optimal_hint()
 
     def _refresh_track_list(self, path: str) -> None:
-        self.single_track_combo.clear()
-        self.single_track_combo.addItem(tr("convert.all"), userData=None)
+        self._tracks_model.blockSignals(True)
+        self._tracks_model.clear()
         try:
             _, tracks = list_midi_tracks(Path(path))
             for t in tracks:
                 label = f"[{t.index}] {t.name}" if t.name else f"[{t.index}]"
                 if t.note_on_count > 0:
                     label += f"  ({t.note_on_count} notes)"
-                self.single_track_combo.addItem(label, userData=t.index)
+                item = QStandardItem(label)
+                item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsUserCheckable)
+                item.setCheckState(Qt.CheckState.Checked if t.note_on_count > 0 else Qt.CheckState.Unchecked)
+                item.setData(t.index, Qt.ItemDataRole.UserRole)
+                self._tracks_model.appendRow(item)
         except Exception:
             pass
+        self._tracks_model.blockSignals(False)
+        self._update_tracks_combo_text()
 
-    def _on_track_changed(self) -> None:
+    def _get_selected_tracks(self) -> list[int] | None:
+        selected: list[int] = []
+        total = self._tracks_model.rowCount()
+        for i in range(total):
+            item = self._tracks_model.item(i)
+            if item and item.checkState() == Qt.CheckState.Checked:
+                idx = item.data(Qt.ItemDataRole.UserRole)
+                if idx is not None:
+                    selected.append(idx)
+        if not selected or len(selected) == total:
+            return None
+        return selected
+
+    def _update_tracks_combo_text(self) -> None:
+        selected = self._get_selected_tracks()
+        if selected is None:
+            self.tracks_combo.setCurrentText(tr("convert.select_all_tracks"))
+        else:
+            self.tracks_combo.setCurrentText(", ".join(str(i) for i in selected))
+
+    def set_selected_tracks(self, indices: list[int]) -> None:
+        self._tracks_model.blockSignals(True)
+        for i in range(self._tracks_model.rowCount()):
+            item = self._tracks_model.item(i)
+            if item:
+                idx = item.data(Qt.ItemDataRole.UserRole)
+                item.setCheckState(
+                    Qt.CheckState.Checked if idx in indices else Qt.CheckState.Unchecked
+                )
+        self._tracks_model.blockSignals(False)
+        self._update_tracks_combo_text()
+        self._on_track_changed()
+
+    def _on_track_changed(self, _item=None) -> None:
+        self._update_tracks_combo_text()
         midi_path = self._midi_path or self.midi_edit.text().strip()
         if not midi_path:
             return
-        track_idx = self.single_track_combo.currentData()
+        tracks = self._get_selected_tracks()
         try:
-            analysis = analyze_midi_key(Path(midi_path), single_track=track_idx)
+            analysis = analyze_midi_key(Path(midi_path), tracks=tracks)
         except Exception:
             analysis = MidiKeyAnalysis()
         self._apply_key_analysis(analysis)
+        self._refresh_optimal_hint()
 
     def _apply_key_analysis(self, analysis: MidiKeyAnalysis) -> None:
         parts: list[str] = []
@@ -496,6 +540,13 @@ class ConvertTab(QWidget):
             parts.append(tr("convert.suggested").format(val=f"{analysis.suggested_transpose:+d}"))
         else:
             parts.append(tr("convert.no_transpose"))
+
+        tracks = self._get_selected_tracks()
+        if tracks is not None:
+            scope = tr("convert.key_scope").format(tracks=", ".join(str(i) for i in tracks))
+        else:
+            scope = tr("convert.key_scope_all")
+        parts.append(f"[{scope}]")
 
         self.key_info_label.setText("  ".join(parts) if parts else tr("unknown"))
         self.key_info_label.setObjectName("keyInfoLabelActive")
@@ -548,7 +599,7 @@ class ConvertTab(QWidget):
             return
 
         profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
-        single_track_val = self.single_track_combo.currentData()
+        tracks = self._get_selected_tracks()
 
         if self._optimal_worker is not None:
             self._optimal_worker.finished.disconnect()
@@ -557,7 +608,7 @@ class ConvertTab(QWidget):
             self._optimal_worker = None
 
         self._optimal_worker = _OptimalWorker(
-            Path(midi_path), mapping_config, profile, single_track_val, parent=self,
+            Path(midi_path), mapping_config, profile, tracks, parent=self,
         )
         self._optimal_worker.finished.connect(self._on_optimal_results)
         self._optimal_worker.start()
@@ -676,7 +727,7 @@ class ConvertTab(QWidget):
             return
 
         profile = self.profile_combo.currentText().strip() or mapping_config.default_profile
-        single_track_val = self.single_track_combo.currentData()
+        tracks = self._get_selected_tracks()
         base_url = self.ai_url_edit.text().strip() or None
         model = self.ai_model_edit.text().strip() or "gpt-4o-mini"
 
@@ -691,7 +742,7 @@ class ConvertTab(QWidget):
                 profile,
                 transpose=self.transpose_spin.value(),
                 octave=self.octave_spin.value(),
-                single_track=single_track_val,
+                tracks=tracks,
                 mode=mode,
                 style=style,
                 simplify=simplify,
@@ -730,7 +781,7 @@ class ConvertTab(QWidget):
             api_key=api_key,
             transpose=self.transpose_spin.value(),
             octave=self.octave_spin.value(),
-            single_track=single_track_val,
+            tracks=tracks,
             base_url=base_url,
             model=model,
             mode=mode,
@@ -1070,7 +1121,7 @@ class ConvertTab(QWidget):
             ai_note_map = fallback_preview if fallback_preview else None
 
         profile = self.profile_combo.currentText().strip() or None
-        single_track_val = self.single_track_combo.currentData()
+        tracks = self._get_selected_tracks()
 
         options = ConvertOptions(
             profile=profile,
@@ -1079,7 +1130,7 @@ class ConvertTab(QWidget):
             strict=self.strict_check.isChecked(),
             snap=self.snap_check.isChecked(),
             note_mode=self.note_mode_combo.currentText(),
-            single_track=single_track_val,
+            tracks=tracks,
             ai_note_map=ai_note_map,
             ai_position_map=ai_position_map or {},
         )
@@ -1161,8 +1212,7 @@ class ConvertTab(QWidget):
         time_sig = "4/4"
         if midi_path and Path(midi_path).exists():
             try:
-                single_track_val = self.single_track_combo.currentData()
-                meta = read_midi_meta(Path(midi_path), single_track=single_track_val)
+                meta = read_midi_meta(Path(midi_path), tracks=self._get_selected_tracks())
                 bpm = meta.bpm
                 time_sig = meta.time_signature
             except Exception:
@@ -1209,7 +1259,7 @@ class ConvertTab(QWidget):
             return
 
         profile = self.profile_combo.currentText().strip() or None
-        single_track_val = self.single_track_combo.currentData()
+        tracks = self._get_selected_tracks()
 
         options = ConvertOptions(
             profile=profile,
@@ -1218,7 +1268,7 @@ class ConvertTab(QWidget):
             strict=self.strict_check.isChecked(),
             snap=self.snap_check.isChecked(),
             note_mode=self.note_mode_combo.currentText(),
-            single_track=single_track_val,
+            tracks=tracks,
             ai_note_map=self._ai_note_map,
             ai_position_map=self._ai_position_map or {},
         )

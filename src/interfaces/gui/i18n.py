@@ -41,6 +41,10 @@ _T: dict[str, dict[str, str]] = {
         "tracks.col_tempo": "Tempo",
         "tracks.col_programs": "Programs",
         "tracks.col_key": "Key",
+        "tracks.col_select": "Select",
+        "tracks.select_all": "Select All",
+        "tracks.deselect_all": "Deselect All",
+        "tracks.invert_selection": "Invert",
         "tracks.hint_double_click": "Tip: double-click a track row to jump to Preview and listen",
         "tracks.info_ppq": "PPQ: {ppq}  |  Tracks: {count}",
         "tracks.key_sig": "Key Signature: {sig}",
@@ -66,7 +70,11 @@ _T: dict[str, dict[str, str]] = {
         "convert.octave": "Octave:",
         "convert.note_mode": "Note Mode:",
         "convert.single_track": "Single Track:",
+        "convert.tracks": "Tracks:",
         "convert.all": "All",
+        "convert.select_all_tracks": "All",
+        "convert.key_scope": "Based on tracks: {tracks}",
+        "convert.key_scope_all": "Based on all tracks",
         "convert.snap": "Snap to Nearest (approximate unmapped notes)",
         "convert.strict": "Strict (fail on unmapped)",
         "convert.btn": "Convert",
@@ -239,6 +247,12 @@ _T: dict[str, dict[str, str]] = {
         "play.start_from": "Start From:",
         "play.tip_start_from": "Click the timeline to choose where playback begins",
         "play.tip_dry_run": "Simulate playback without sending actual key presses (for testing)",
+        "play.reset_position": "Reset",
+        "play.open_timeline": "Expand",
+        "play.timeline_dialog_title": "Select Start Position",
+        "play.manual_position": "Position:",
+        "play.confirm": "OK",
+        "play.cancel": "Cancel",
 
         # ── SimulateTab ──
         "sim.mapping": "Mapping:",
@@ -295,6 +309,9 @@ _T: dict[str, dict[str, str]] = {
         "update.download_error": "Download failed: {err}",
         "update.source_hint": "Auto-update is only available for packaged builds.\nPlease use git pull to update.",
         "update.about_text": "Sky Music Automation v{version}\n\nPC Sky auto-play tool.\nhttps://github.com/choudoufu520/sky-autoplay",
+
+        # ── Timeline ──
+        "timeline.track_filter": "Filter Tracks",
     },
     "zh": {
         # ── common ──
@@ -330,6 +347,10 @@ _T: dict[str, dict[str, str]] = {
         "tracks.col_tempo": "速度",
         "tracks.col_programs": "音色",
         "tracks.col_key": "调性",
+        "tracks.col_select": "选择",
+        "tracks.select_all": "全选",
+        "tracks.deselect_all": "全不选",
+        "tracks.invert_selection": "反选",
         "tracks.hint_double_click": "提示：双击轨道行可跳转到预览页试听",
         "tracks.info_ppq": "PPQ：{ppq}  |  轨道数：{count}",
         "tracks.key_sig": "调号标记：{sig}",
@@ -355,7 +376,11 @@ _T: dict[str, dict[str, str]] = {
         "convert.octave": "八度：",
         "convert.note_mode": "音符模式：",
         "convert.single_track": "单轨道：",
+        "convert.tracks": "轨道：",
         "convert.all": "全部",
+        "convert.select_all_tracks": "全部",
+        "convert.key_scope": "基于轨道：{tracks}",
+        "convert.key_scope_all": "基于全部轨道",
         "convert.snap": "就近吸附（近似未映射音符）",
         "convert.strict": "严格模式（未映射时报错）",
         "convert.btn": "转换",
@@ -528,6 +553,12 @@ _T: dict[str, dict[str, str]] = {
         "play.start_from": "起始位置：",
         "play.tip_start_from": "点击时间轴选择演奏起始位置",
         "play.tip_dry_run": "模拟演奏，不实际发送按键，用于调试",
+        "play.reset_position": "重置",
+        "play.open_timeline": "展开",
+        "play.timeline_dialog_title": "选择起始位置",
+        "play.manual_position": "位置：",
+        "play.confirm": "确定",
+        "play.cancel": "取消",
 
         # ── 模拟演奏 ──
         "sim.mapping": "映射文件：",
@@ -584,6 +615,9 @@ _T: dict[str, dict[str, str]] = {
         "update.download_error": "下载失败：{err}",
         "update.source_hint": "自动更新仅支持打包版本。\n请使用 git pull 更新源码。",
         "update.about_text": "光遇自动演奏工具 v{version}\n\nPC《光·遇》自动演奏工具。\nhttps://github.com/choudoufu520/sky-autoplay",
+
+        # ── 时间轴 ──
+        "timeline.track_filter": "轨道过滤",
     },
 }
 

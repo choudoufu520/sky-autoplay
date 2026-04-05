@@ -140,14 +140,14 @@ def analyze_unmapped_notes(
     profile_id: str,
     transpose: int = 0,
     octave: int = 0,
-    single_track: int | None = None,
+    tracks: list[int] | None = None,
 ) -> tuple[list[int], list[int], Counter[int]]:
     """Return (available_notes, unmapped_notes, unmapped_counts)."""
     available = _get_available_notes(mapping, profile_id)
     if not available:
         return [], [], Counter()
 
-    raw_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
     shift = _get_shift(mapping, profile_id, transpose, octave)
 
     unmapped_counts: Counter[int] = Counter()
@@ -173,7 +173,7 @@ def find_optimal_settings(
     midi_path: Path,
     mapping: MappingConfig,
     profile_id: str,
-    single_track: int | None = None,
+    tracks: list[int] | None = None,
 ) -> list[OptimalSetting]:
     """Search all transpose (-6..+5) x octave offset (-3..+1) combinations.
 
@@ -184,7 +184,7 @@ def find_optimal_settings(
         return []
 
     available_set = set(available)
-    raw_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
     if not raw_events:
         return []
 
@@ -791,7 +791,7 @@ def get_arrange_precheck(
     profile_id: str,
     transpose: int = 0,
     octave: int = 0,
-    single_track: int | None = None,
+    tracks: list[int] | None = None,
     mode: str = "remap",
     style: str = "conservative",
     simplify: bool = False,
@@ -809,9 +809,9 @@ def get_arrange_precheck(
             likely_key=likely_key,
         )
 
-    events, _, _ = read_midi_events(midi_path, single_track=single_track)
-    meta = read_midi_meta(midi_path, single_track=single_track)
-    key_analysis = analyze_midi_key(midi_path, single_track=single_track)
+    events, _, _ = read_midi_events(midi_path, tracks=tracks)
+    meta = read_midi_meta(midi_path, tracks=tracks)
+    key_analysis = analyze_midi_key(midi_path, tracks=tracks)
     prompt = build_context_prompt(
         available,
         events,
@@ -1168,7 +1168,7 @@ def ai_arrange(
     api_key: str,
     transpose: int = 0,
     octave: int = 0,
-    single_track: int | None = None,
+    tracks: list[int] | None = None,
     base_url: str | None = None,
     model: str = "gpt-4o-mini",
     mode: str = "remap",
@@ -1184,8 +1184,8 @@ def ai_arrange(
 
     available_set = set(available)
     shift = get_shift(mapping, profile_id, transpose, octave)
-    raw_events, _, _ = read_midi_events(midi_path, single_track=single_track)
-    key_analysis = analyze_midi_key(midi_path, single_track=single_track)
+    raw_events, _, _ = read_midi_events(midi_path, tracks=tracks)
+    key_analysis = analyze_midi_key(midi_path, tracks=tracks)
 
     unmapped_counts: Counter[int] = Counter()
     for ev in raw_events:
@@ -1204,11 +1204,11 @@ def ai_arrange(
         )
 
     midi_filename = midi_path.stem
-    meta = read_midi_meta(midi_path, single_track=single_track)
+    meta = read_midi_meta(midi_path, tracks=tracks)
 
     optimal_hint = ""
     try:
-        opts = find_optimal_settings(midi_path, mapping, profile_id, single_track=single_track)
+        opts = find_optimal_settings(midi_path, mapping, profile_id, tracks=tracks)
         if opts:
             best = opts[0]
             current_unmapped = total_unmapped

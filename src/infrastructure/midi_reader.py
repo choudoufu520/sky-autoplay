@@ -49,11 +49,11 @@ class MidiTrackInfo:
     has_tempo: bool
 
 
-def read_midi_events(midi_path: Path, single_track: int | None = None) -> tuple[list[RawMidiEvent], int, int]:
+def read_midi_events(midi_path: Path, *, tracks: list[int] | None = None) -> tuple[list[RawMidiEvent], int, int]:
     midi = _load_midi(midi_path)
     ppq = midi.ticks_per_beat
 
-    track_stream = _build_track_stream(midi, single_track)
+    track_stream = _build_track_stream(midi, tracks)
 
     current_tempo = 500000  # 120 BPM
     current_ms = 0.0
@@ -146,14 +146,14 @@ class MidiKeyAnalysis:
     note_distribution: list[tuple[str, int]] = field(default_factory=list)
 
 
-def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKeyAnalysis:
+def analyze_midi_key(midi_path: Path, *, tracks: list[int] | None = None) -> MidiKeyAnalysis:
     midi = _load_midi(midi_path)
     result = MidiKeyAnalysis()
 
-    scan_tracks = (
-        [midi.tracks[single_track]] if single_track is not None and 0 <= single_track < len(midi.tracks)
-        else midi.tracks
-    )
+    if tracks is not None:
+        scan_tracks = [midi.tracks[i] for i in tracks if 0 <= i < len(midi.tracks)]
+    else:
+        scan_tracks = list(midi.tracks)
 
     for track in scan_tracks:
         for msg in track:
@@ -164,7 +164,7 @@ def analyze_midi_key(midi_path: Path, single_track: int | None = None) -> MidiKe
             break
 
     pitch_counts: Counter[int] = Counter()
-    weighted_events, _, _ = read_midi_events(midi_path, single_track=single_track)
+    weighted_events, _, _ = read_midi_events(midi_path, tracks=tracks)
     for ev in weighted_events:
         duration_weight = max(int(round(ev.duration_ms / 40)), 1)
         velocity_weight = max(ev.velocity // 24, 1)
@@ -211,12 +211,12 @@ class MidiMeta:
     duration_sec: float = 0.0
 
 
-def read_midi_meta(midi_path: Path, single_track: int | None = None) -> MidiMeta:
+def read_midi_meta(midi_path: Path, *, tracks: list[int] | None = None) -> MidiMeta:
     midi = _load_midi(midi_path)
     ppq = midi.ticks_per_beat
     meta = MidiMeta()
 
-    stream = _build_track_stream(midi, single_track)
+    stream = _build_track_stream(midi, tracks)
     tempo = 500000
     current_tick = 0
     total_sec = 0.0
@@ -262,9 +262,12 @@ def export_single_track_midi(
     target.save(str(output_path))
 
 
-def _build_track_stream(midi: MidiFile, single_track: int | None):
-    if single_track is not None:
-        if single_track < 0 or single_track >= len(midi.tracks):
-            raise IndexError(f"track index out of range: {single_track}, track_count={len(midi.tracks)}")
-        return midi.tracks[single_track]
+def _build_track_stream(midi: MidiFile, tracks: list[int] | None):
+    if tracks is not None:
+        valid = [i for i in tracks if 0 <= i < len(midi.tracks)]
+        if not valid:
+            raise IndexError(f"no valid track indices in {tracks}, track_count={len(midi.tracks)}")
+        if len(valid) == 1:
+            return midi.tracks[valid[0]]
+        return merge_tracks([midi.tracks[i] for i in valid])
     return merge_tracks(midi.tracks)

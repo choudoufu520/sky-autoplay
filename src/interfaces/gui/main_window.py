@@ -132,6 +132,7 @@ class MainWindow(QMainWindow):
         self.tracks_tab.midi_loaded.connect(self._on_midi_loaded)
         self.tracks_tab.preview_requested.connect(self._on_preview_requested)
         self.tracks_tab.key_analyzed.connect(self._on_key_analyzed)
+        self.tracks_tab.tracks_selected.connect(self._on_tracks_selected)
         self.convert_tab.chart_saved.connect(self._on_chart_saved)
         self.convert_tab.midi_changed.connect(self._sync_midi_path)
         self.preview_tab.midi_changed.connect(self._sync_midi_path)
@@ -156,6 +157,9 @@ class MainWindow(QMainWindow):
 
     def _on_key_analyzed(self, analysis: object) -> None:
         self.convert_tab.set_key_analysis(analysis)
+
+    def _on_tracks_selected(self, indices: list) -> None:
+        self.convert_tab.set_selected_tracks(indices)
 
     def _on_chart_saved(self, path: str) -> None:
         self.play_tab.set_chart_path(path)

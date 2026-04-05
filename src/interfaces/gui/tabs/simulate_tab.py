@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import re
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QComboBox,
@@ -16,6 +18,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSlider,
     QSpinBox,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -25,10 +28,12 @@ from src.application.audio_engine import (
     NullAudioBackend,
     create_audio_backend,
 )
+from src.domain.chart import ChartDocument
 from src.infrastructure.repository import load_chart, load_mapping
 from src.interfaces.gui.i18n import on_language_changed, tr
 from src.interfaces.gui.widgets.note_timeline import NoteTimelineWidget
 from src.interfaces.gui.widgets.sky_keyboard import SkyKeyboardWidget
+from src.interfaces.gui.widgets.timeline_dialog import TimelineDialog
 from src.interfaces.gui.workers.sim_worker import SimulationEngine
 
 _log = logging.getLogger(__name__)
@@ -51,6 +56,7 @@ class SimulateTab(QWidget):
         self._mapping_loaded = False
         self._midi_notes: list[int] = []
         self._engine = SimulationEngine(self)
+        self._cached_chart: ChartDocument | None = None
 
         layout = QVBoxLayout(self)
 
@@ -79,9 +85,24 @@ class SimulateTab(QWidget):
         chart_row.addWidget(self.chart_browse)
         layout.addLayout(chart_row)
 
+        start_row = QHBoxLayout()
         self.start_from_label = QLabel()
-        layout.addWidget(self.start_from_label)
+        start_row.addWidget(self.start_from_label)
+        self.position_edit = QLineEdit("00:00")
+        self.position_edit.setFixedWidth(60)
+        self.position_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.position_edit.editingFinished.connect(self._on_position_edited)
+        start_row.addWidget(self.position_edit)
+        self.reset_btn = QPushButton()
+        self.reset_btn.clicked.connect(self._reset_position)
+        start_row.addWidget(self.reset_btn)
+        self.expand_btn = QToolButton()
+        self.expand_btn.clicked.connect(self._open_timeline_dialog)
+        start_row.addWidget(self.expand_btn)
+        start_row.addStretch()
+        layout.addLayout(start_row)
         self.timeline = NoteTimelineWidget()
+        self.timeline.position_changed.connect(self._sync_position_edit)
         layout.addWidget(self.timeline)
 
         # ── controls ────────────────────────────────────────
@@ -191,6 +212,8 @@ class SimulateTab(QWidget):
         self.chart_browse.setText(tr("browse"))
 
         self.start_from_label.setText(tr("play.start_from"))
+        self.reset_btn.setText(tr("play.reset_position"))
+        self.expand_btn.setText(tr("play.open_timeline"))
         self.timeline.setToolTip(tr("play.tip_start_from"))
 
         self.mode_label.setText(tr("sim.mode"))
@@ -230,11 +253,13 @@ class SimulateTab(QWidget):
             self._load_timeline(path)
 
     def _load_timeline(self, path: str) -> None:
+        self._cached_chart = None
         if not path.strip():
             self.timeline.clear()
             return
         try:
             chart = load_chart(Path(path))
+            self._cached_chart = chart
             total_ms = max(e.time_ms for e in chart.events) if chart.events else 0
             self.timeline.set_events(chart.events, total_ms)
         except Exception:
@@ -324,11 +349,13 @@ class SimulateTab(QWidget):
             self.log_text.appendPlainText(tr("sim.err_no_chart"))
             return
 
-        try:
-            chart = load_chart(Path(chart_path))
-        except Exception as exc:
-            self.log_text.appendPlainText(tr("sim.err_load_chart").format(err=exc))
-            return
+        chart = self._cached_chart
+        if chart is None:
+            try:
+                chart = load_chart(Path(chart_path))
+            except Exception as exc:
+                self.log_text.appendPlainText(tr("sim.err_load_chart").format(err=exc))
+                return
 
         speed = _SPEEDS[self.speed_combo.currentIndex()][1]
 
@@ -401,6 +428,35 @@ class SimulateTab(QWidget):
             self.status_label.setText(tr("sim.status_manual"))
         else:
             self.status_label.setText(tr("sim.status_ready"))
+
+    # ── start position helpers ─────────────────────────────
+
+    def _sync_position_edit(self, ms: int) -> None:
+        s = max(0, ms // 1000)
+        m, s = divmod(s, 60)
+        self.position_edit.setText(f"{m:02d}:{s:02d}")
+
+    def _on_position_edited(self) -> None:
+        text = self.position_edit.text().strip()
+        m = re.match(r"^(\d+):(\d{1,2})$", text)
+        if m:
+            ms = (int(m.group(1)) * 60 + int(m.group(2))) * 1000
+            self.timeline.set_position(ms)
+
+    def _reset_position(self) -> None:
+        self.timeline.reset()
+
+    def _open_timeline_dialog(self) -> None:
+        if not self.timeline.total_ms:
+            return
+        dlg = TimelineDialog(
+            self.timeline.events,
+            self.timeline.total_ms,
+            self.timeline.position_ms,
+            parent=self,
+        )
+        if dlg.exec():
+            self.timeline.set_position(dlg.position_ms)
 
 
 def _fmt_time(ms: int) -> str:

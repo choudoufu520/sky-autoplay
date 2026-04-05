@@ -59,7 +59,7 @@ def convert_command(
         strict=strict,
         snap=snap,
         note_mode=note_mode,
-        single_track=single_track,
+        tracks=[single_track] if single_track is not None else None,
     )
 
     try:
@@ -158,7 +158,7 @@ def preview_track_game_command(
         strict=strict,
         snap=snap,
         note_mode=note_mode,
-        single_track=track,
+        tracks=[track],
     )
 
     try:

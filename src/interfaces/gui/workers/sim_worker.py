@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from bisect import bisect_left
 
 from PySide6.QtCore import QObject, QTimer, Signal
 
@@ -33,6 +34,7 @@ class SimulationEngine(QObject):
         self._pending: list[tuple[float, str]] = []
         self._pressed: set[str] = set()
         self._running = False
+        self._first_tick = False
 
     @property
     def is_running(self) -> bool:
@@ -41,17 +43,41 @@ class SimulationEngine(QObject):
     def start(self, chart: ChartDocument, speed: float = 1.0, start_ms: int = 0) -> None:
         groups = _group_by_time(chart.events)
         self._start_ms = max(start_ms, 0)
+        start_idx = 0
         if self._start_ms > 0:
-            groups = [(t, evts) for t, evts in groups if t >= self._start_ms]
+            start_idx = bisect_left(groups, (self._start_ms,))
+            self._inject_held_notes(groups, start_idx)
         self._groups = groups
-        self._index = 0
+        self._index = start_idx
         self._speed = max(speed, 0.1)
         self._total_ms = (self._groups[-1][0] - self._start_ms) if self._groups else 0
         self._pending.clear()
         self._pressed.clear()
-        self._start = time.perf_counter()
         self._running = True
+        self._first_tick = True
         self._timer.start()
+
+    def _inject_held_notes(self, groups: list[tuple[int, list[ChartEvent]]], start_idx: int) -> None:
+        """Find down events before start_ms whose matching up is after; inject
+        down at start_ms so held notes are not lost."""
+        held: dict[str, ChartEvent] = {}
+        for i in range(start_idx):
+            for ev in groups[i][1]:
+                if ev.action == "down":
+                    held[ev.key] = ev
+                elif ev.action in ("up", "tap") and ev.key in held:
+                    del held[ev.key]
+        if not held:
+            return
+        injected = [
+            ChartEvent(time_ms=self._start_ms, key=ev.key, action="down",
+                       duration_ms=ev.duration_ms, mapping_profile=ev.mapping_profile)
+            for ev in held.values()
+        ]
+        if start_idx < len(groups) and groups[start_idx][0] == self._start_ms:
+            groups[start_idx] = (self._start_ms, injected + list(groups[start_idx][1]))
+        else:
+            groups.insert(start_idx, (self._start_ms, injected))
 
     def stop(self) -> None:
         self._running = False
@@ -69,6 +95,12 @@ class SimulationEngine(QObject):
     def _tick(self) -> None:
         if not self._running:
             return
+
+        if self._first_tick:
+            self._start = time.perf_counter()
+            self._first_tick = False
+        else:
+            pass  # _start already set on first tick
 
         elapsed_real = time.perf_counter() - self._start
         elapsed_ms = elapsed_real * 1000.0 * self._speed + self._start_ms

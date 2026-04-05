@@ -32,7 +32,7 @@ class AiArrangeWorker(QThread):
         api_key: str,
         transpose: int = 0,
         octave: int = 0,
-        single_track: int | None = None,
+        tracks: list[int] | None = None,
         base_url: str | None = None,
         model: str = "gpt-4o-mini",
         mode: str = "remap",
@@ -47,7 +47,7 @@ class AiArrangeWorker(QThread):
         self.api_key = api_key
         self.transpose = transpose
         self.octave = octave
-        self.single_track = single_track
+        self.tracks = tracks
         self.base_url = base_url
         self.model = model
         self.mode = mode
@@ -66,7 +66,7 @@ class AiArrangeWorker(QThread):
                 self.api_key,
                 transpose=self.transpose,
                 octave=self.octave,
-                single_track=self.single_track,
+                tracks=self.tracks,
                 base_url=self.base_url,
                 model=self.model,
                 mode=self.mode,
