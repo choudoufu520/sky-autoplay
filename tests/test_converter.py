@@ -13,6 +13,7 @@ from src.application.converter import (
     _fuzzy_position_lookup,
     convert_midi_to_chart,
     denoise_chart,
+    key_root_offset,
     midi_events_to_jianpu,
 )
 from src.application.ai_arranger import _redistribute_convergent
@@ -542,6 +543,24 @@ class TestMidiEventsToJianpu:
         assert "1=C" in result
         assert "♩=120" in result
 
+    def test_header_with_custom_key(self):
+        events = [_midi_event(67, 0)]
+        result = midi_events_to_jianpu(
+            events, bpm=120.0, time_signature="4/4", title="G-Test",
+            key="G", root_offset=7,
+        )
+        assert "1=G" in result
+        assert "1=C" not in result
+        assert "1" in result
+
+    def test_root_offset_scale_degrees(self):
+        """With root_offset=7 (G), G4 should be '1' and A4 should be '2'."""
+        g4 = [_midi_event(67, 0)]
+        result = midi_events_to_jianpu(g4, bpm=120.0, key="G", root_offset=7)
+        lines = result.strip().split("\n")
+        note_lines = [l for l in lines if "|" in l]
+        assert any("1" in l for l in note_lines)
+
     def test_chord_notation(self):
         """Simultaneous notes should be grouped."""
         events = [
@@ -566,3 +585,30 @@ class TestMidiEventsToJianpu:
         events = [_midi_event(84, 0)]
         result = midi_events_to_jianpu(events, bpm=120.0)
         assert "'" in result
+
+
+class TestKeyRootOffset:
+    def test_c_major_default(self):
+        key, root = key_root_offset(0)
+        assert key == "C"
+        assert root == 0
+
+    def test_transpose_minus2(self):
+        key, root = key_root_offset(-2)
+        assert key == "D"
+        assert root == 2
+
+    def test_transpose_minus7(self):
+        key, root = key_root_offset(-7)
+        assert key == "G"
+        assert root == 7
+
+    def test_profile_transpose(self):
+        key, root = key_root_offset(0, profile_transpose=3)
+        assert root == (0 - 3) % 12
+        assert root == 9
+
+    def test_combined_transpose(self):
+        key, root = key_root_offset(-2, profile_transpose=3)
+        assert root == (0 - (-2) - 3) % 12
+        assert root == (2 - 3) % 12
